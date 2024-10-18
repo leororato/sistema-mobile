@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 
 // Configuração da URL base da API
 const api = axios.create({
-    baseURL: 'http://192.168.1.238:8080/api',
+    baseURL: 'http://192.168.0.122:8080/api',
 });
 
 // Intercepta requisições para incluir o token JWT
