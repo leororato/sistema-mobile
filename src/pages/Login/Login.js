@@ -8,19 +8,24 @@ export default function Login({ navigation }) {
   const [senha, setSenha] = useState('');
 
 
-    const handleLogin = async () => {
-        
-        try {
-            const response = await api.post('http://192.168.1.238:8080/auth/login', { login : login })
-            SecureStore.setItemAsync('token', response.data.token);
-            
-            navigation.navigate('Inicio');
+  const handleLogin = async () => {
 
-        } catch (error) {
-            console.log("Erro no login: ", error);
-        }
+    try {
+      const response = await api.post('http://192.168.0.122:8080/auth/login', { login: login, senha: senha });
+
+      await SecureStore.setItemAsync('token', response.data.token);
+      await SecureStore.setItemAsync('id', JSON.stringify(response.data.id)); 
+      await SecureStore.setItemAsync('nivelAcesso', JSON.stringify(response.data.nivelAcesso)); 
+      await SecureStore.setItemAsync('nome', response.data.nome);
+
+      console.log('resp: ', response.data )
+      navigation.navigate('Inicio');
+
+    } catch (error) {
+      console.log("Erro no login: ", error);
     }
-    
+  }
+
 
 
   return (

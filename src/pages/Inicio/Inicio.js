@@ -3,9 +3,10 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import api from "../../../axiosConfig";
 import Icon from 'react-native-vector-icons/AntDesign';
+import { format } from 'date-fns';
 
 export default function Inicio({ navigation }) {
-    
+
     const [packinglistsExistentes, setPackinglistsExistentes] = useState([]);
     const [contextMenuVisible, setContextMenuVisible] = useState(false);
     const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
@@ -17,9 +18,9 @@ export default function Inicio({ navigation }) {
 
     const fetchPackinglists = async () => {
         try {
-            const response = await api.get('/packinglist/listagem-packinglist-inicio');
+            const response = await api.get('/packinglist/mobile-listagem-packinglist-inicio');
             setPackinglistsExistentes(response.data);
-            console.log('data: ', response.data);
+            
         } catch (error) {
             console.log("Erro ao carregar packinglists: ", error);
         }
@@ -28,26 +29,31 @@ export default function Inicio({ navigation }) {
     const handlePressIn = (e, item) => {
         const { pageX, pageY } = e.nativeEvent;
 
-        // Ajustando a posição do menu com um pequeno deslocamento para compensar possíveis diferenças
-        let adjustedX = pageX + 0; // Ajuste horizontal
-        let adjustedY = pageY - 80; // Ajuste vertical
-        console.log('x: ', adjustedX);
-        console.log('y: ', adjustedY);
+        let adjustedX = pageX + 0;
+        let adjustedY = pageY - 80;
 
         if (adjustedX > 250) {
-            adjustedX = 250; // Ajuste horizontal para centralizar o menu
+            adjustedX = 250;
         }
 
+        let idPackinglist = item.idPackinglist;
         setContextMenuPosition({ x: adjustedX, y: adjustedY });
         setContextMenuVisible(true);
-        setSelectedItem(item); // Guardar o item selecionado, se necessário.
+        setSelectedItem(idPackinglist);
     };
+
+    const handleMenuColetar = () => {
+        setContextMenuVisible(false);
+        // Navegar para a página Conferência, passando o idPackinglist como parâmetro
+        navigation.navigate('Conferência', { idPackinglist: selectedItem });
+    }
+    
 
     const renderContextMenu = () => {
         if (!contextMenuVisible) return null;
         return (
             <View style={[style.contextMenu, { top: contextMenuPosition.y, left: contextMenuPosition.x }]}>
-                <TouchableOpacity onPress={() => setContextMenuVisible(false)} style={style.botaoMenuColetar}>
+                <TouchableOpacity onPress={handleMenuColetar} style={style.botaoMenuColetar}>
                     <Text>Coletar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setContextMenuVisible(false)} style={style.botaoMenuConferir}>
@@ -60,15 +66,23 @@ export default function Inicio({ navigation }) {
         );
     };
 
-    const renderPackingListItem = ({ item }) => (
+    const renderPackingListItem = ({ item, index }) => {
+    const isLastItem = index === packinglistsExistentes.length - 1;
+
+    return (
         <TouchableOpacity onPressIn={(e) => handlePressIn(e, item)}>
-            <View style={style.row}>
+            <View style={[style.row, isLastItem && style.lastRow]}>
                 <Text style={style.cell}>{item.idPackinglist}</Text>
                 <Text style={style.cell}>{item.nomeClienteImportador}</Text>
-                <Text style={style.cell}>{item.dtCriacao}</Text>
+                <Text style={style.cell}>{formatarData(item.dtCriacao)}</Text>
             </View>
         </TouchableOpacity>
     );
+};
+
+    const formatarData = (dtCriacao) => {
+        return format(new Date(dtCriacao), 'dd/MM/yyyy - HH:mm');
+    };
 
     return (
         <TouchableWithoutFeedback onPress={() => setContextMenuVisible(false)}>
@@ -143,9 +157,14 @@ const style = StyleSheet.create({
     },
     table: {
         width: '90%',
-        marginBottom: 20, 
+        marginBottom: 20,
+        borderColor: '#ccc',
+        borderWidth: '1px'
     },
     header: {
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
         flexDirection: 'row',
         backgroundColor: '#ddd',
         padding: 10,
@@ -156,11 +175,16 @@ const style = StyleSheet.create({
         textAlign: 'center',
     },
     row: {
+        display: 'flex',
+        alignItems: 'center',
         flexDirection: 'row',
         padding: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#ccc',
     },
+    lastRow: {
+        borderBottomWidth: 0,
+    },  
     cell: {
         flex: 1,
         textAlign: 'center',
