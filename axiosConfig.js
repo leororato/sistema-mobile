@@ -12,6 +12,7 @@ api.interceptors.request.use(
         const token = SecureStore.getItem('token');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
+           // console.log('token: ', token)
         }
         return config;
     },
@@ -21,16 +22,16 @@ api.interceptors.request.use(
 );
 
 
-// // Interceptor para tratamento de erros
-// api.interceptors.response.use(
-//     response => response,
-//     error => {
-//         if (error.response && error.response.status === 401) {
-//             const errorMessage = encodeURIComponent(error.response.data?.message || "Sua sessão expirou");
-//             window.location.href = `/login?error=${errorMessage}`; // Redireciona com a mensagem
-//         }
-//         return Promise.reject(error);
-//     }
-// );
+// Interceptor para tratamento de erros
+api.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response && error.response.status === 401) {
+            const errorMessage = encodeURIComponent(error.response.data?.message || "Sua sessão expirou");
+            window.location.href = `/login?error=${errorMessage}`; // Redireciona com a mensagem
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default api;

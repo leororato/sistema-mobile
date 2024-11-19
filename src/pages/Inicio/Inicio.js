@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import api from "../../../axiosConfig";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
+import { fetchPackingListPorId, fetchPackingLists, insertPackingList } from "../../database/services/packingListService.js";
+import { excluirDatabase } from "../../database/database.js";
 
 export default function Inicio({ navigation }) {
 
@@ -12,15 +14,17 @@ export default function Inicio({ navigation }) {
     const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
     const [selectedItem, setSelectedItem] = useState(null);
 
+
+
     useEffect(() => {
-        fetchPackinglists();
+        fetchPackinglistsInicio();
     }, []);
 
-    const fetchPackinglists = async () => {
+    const fetchPackinglistsInicio = async () => {
         try {
             const response = await api.get('/packinglist/mobile-listagem-packinglist-inicio');
             setPackinglistsExistentes(response.data);
-            
+
         } catch (error) {
             console.log("Erro ao carregar packinglists: ", error);
         }
@@ -42,12 +46,91 @@ export default function Inicio({ navigation }) {
         setSelectedItem(idPackinglist);
     };
 
-    const handleMenuColetar = () => {
+    const handleMenuColetar = async () => {
         setContextMenuVisible(false);
-        // Navegar para a página Conferência, passando o idPackinglist como parâmetro
-        navigation.navigate('Conferência', { idPackinglist: selectedItem });
+
+        const packingList = await fetchPackingListPorId(selectedItem);
+        if (packingList) {
+
+            navigation.navigate('Conferência', { idPackinglist: selectedItem });
+
+        } else {
+            Alert.alert(
+                'Importar Packinglist',
+                'Esta packinglist não foi importada. Deseja importá-la?',
+                [
+                    { text: 'Sim', onPress: () => handleImportarPackinglist() },
+                    { text: 'Não', onPress: () => { }, style: 'cancel' },
+                ],
+                { cancelable: false }
+            );
+        }
     }
-    
+
+    const importarProdutosDaPackinglist = async () => {
+        const idPackinglist = selectedItem;
+
+        try {
+            const response = await api.get(`/pl-produto/packinglist/${idPackinglist}`);
+
+
+        } catch(error) {
+            console.log("Erro ao importar produtos da packinglist: ", error);
+        }
+    }
+
+    const handleImportarPackinglist = async () => {
+
+        setContextMenuVisible(false);
+        const idPackinglist = selectedItem;
+
+        const packinglist = await fetchPackingListPorId(selectedItem);
+
+        if (!packinglist) {
+
+            try {
+                const response = await api.get(`/packinglist/listar-packinglist-edicao/${idPackinglist}`);
+                const packingList = response.data;
+
+                const packingListImportar = {
+                    dtCriacao: packingList.dtCriacao,
+                    idImportador: packingList.idImportador,
+                    idConsignatario: packingList.idConsignatario,
+                    idNotificado: packingList.idNotificado,
+                    paisOrigem: packingList.paisOrigem,
+                    fronteira: packingList.fronteira,
+                    localEmbarque: packingList.localEmbarque,
+                    localDestino: packingList.localDestino,
+                    TermosPagamento: packingList.TermosPagamento,
+                    dadosBancarios: packingList.dadosBancarios,
+                    INCOTERM: packingList.INCOTERM,
+                    INVOICE: packingList.INVOICE,
+                    meioTransporte: packingList.meioTransporte,
+                    pesoLiquidoTotal: packingList.pesoLiquidoTotal,
+                    pesoBrutoTotal: packingList.pesoBrutoTotal,
+                    idioma: packingList.idioma,
+                    finalizado: packingList.finalizado,
+                    registro_criado_por: packingList.registro_criado_por,
+                    registro_alterado_por: packingList.registro_alterado_por,
+                    registro_criado: packingList.registro_criado,
+                    registro_alterado: packingList.registro_alterado,
+                    registro_deletado: packingList.registro_deletado,
+                    numeroColetas: packingList.numeroColetas,
+                };
+
+                await insertPackingList(packingListImportar);
+                Alert.alert("PackingList importada com sucesso!")
+
+            } catch (error) {
+                console.log('erro ao buscar packinglist: ', error);
+            }
+
+        } else {
+            Alert.alert("Este packinglist já foi importado")
+        }
+
+    }
+
 
     const renderContextMenu = () => {
         if (!contextMenuVisible) return null;
@@ -56,8 +139,8 @@ export default function Inicio({ navigation }) {
                 <TouchableOpacity onPress={handleMenuColetar} style={style.botaoMenuColetar}>
                     <Text>Coletar</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => setContextMenuVisible(false)} style={style.botaoMenuConferir}>
-                    <Text>Conferir</Text>
+                <TouchableOpacity onPress={handleImportarPackinglist} style={style.botaoMenuConferir}>
+                    <Text>Importar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setContextMenuVisible(false)} style={style.botaoMenuConsultar}>
                     <Text>Consultar</Text>
@@ -67,18 +150,18 @@ export default function Inicio({ navigation }) {
     };
 
     const renderPackingListItem = ({ item, index }) => {
-    const isLastItem = index === packinglistsExistentes.length - 1;
+        const isLastItem = index === packinglistsExistentes.length - 1;
 
-    return (
-        <TouchableOpacity onPressIn={(e) => handlePressIn(e, item)}>
-            <View style={[style.row, isLastItem && style.lastRow]}>
-                <Text style={style.cell}>{item.idPackinglist}</Text>
-                <Text style={style.cell}>{item.nomeClienteImportador}</Text>
-                <Text style={style.cell}>{formatarData(item.dtCriacao)}</Text>
-            </View>
-        </TouchableOpacity>
-    );
-};
+        return (
+            <TouchableOpacity onPressIn={(e) => handlePressIn(e, item)}>
+                <View style={[style.row, isLastItem && style.lastRow]}>
+                    <Text style={style.cell}>{item.idPackinglist}</Text>
+                    <Text style={style.cell}>{item.nomeClienteImportador}</Text>
+                    <Text style={style.cell}>{formatarData(item.dtCriacao)}</Text>
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     const formatarData = (dtCriacao) => {
         return format(new Date(dtCriacao), 'dd/MM/yyyy - HH:mm');
@@ -88,7 +171,14 @@ export default function Inicio({ navigation }) {
         <TouchableWithoutFeedback onPress={() => setContextMenuVisible(false)}>
             <View style={style.containerInicio}>
                 <View style={style.containerBotaoRecarregar}>
-                    <TouchableOpacity onPress={fetchPackinglists}>
+                    <TouchableOpacity style={style.botaoImportadas}>
+                        <Button
+                            title="Importadas"
+                            color={"black"}
+                            onPress={() => navigation.navigate('Importadas')}
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={style.reloadPackinglist} onPress={fetchPackinglistsInicio}>
                         <Icon name="reload1" size={30} color="#000" />
                     </TouchableOpacity>
                 </View>
@@ -125,9 +215,20 @@ const style = StyleSheet.create({
     },
     containerBotaoRecarregar: {
         width: '100%',
+        display: 'flex',
+        flexDirection: 'row',
         alignItems: 'flex-end',
+        justifyContent: 'space-around',
         paddingRight: 20,
         paddingBottom: 10,
+        paddingLeft: 10,
+    },
+    botaoImportadas: {
+        backgroundColor: '#ccc',
+        borderRadius: '5px'
+    }, 
+    reloadPackinglist: {
+        padding: 5
     },
     botaoMenuColetar: {
         backgroundColor: '#ccc',
@@ -184,7 +285,7 @@ const style = StyleSheet.create({
     },
     lastRow: {
         borderBottomWidth: 0,
-    },  
+    },
     cell: {
         flex: 1,
         textAlign: 'center',

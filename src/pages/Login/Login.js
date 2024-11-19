@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import api from '../../../axiosConfig';
 import * as SecureStore from 'expo-secure-store';
 
@@ -12,7 +12,7 @@ export default function Login({ navigation }) {
 
     try {
       const response = await api.post('http://192.168.0.122:8080/auth/login', { login: login, senha: senha });
-
+      console.log('resp: ', response.data)
       await SecureStore.setItemAsync('token', response.data.token);
       await SecureStore.setItemAsync('id', JSON.stringify(response.data.id)); 
       await SecureStore.setItemAsync('nivelAcesso', JSON.stringify(response.data.nivelAcesso)); 
@@ -46,6 +46,11 @@ export default function Login({ navigation }) {
         onChangeText={setSenha}
       />
 
+      <ActivityIndicator 
+      size={24}
+      color={"#FFF"}
+      />
+      
       <Button title="Entrar" onPress={handleLogin} />
     </View>
   );

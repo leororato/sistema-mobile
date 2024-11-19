@@ -96,10 +96,10 @@ export default function Conferencia({ navigation }) {
         <View style={styles.containerConferencia}>
             <View style={styles.containerCameraConferencia}>
                 <Text>lugar da camera</Text>
-                {/*<BarCodeScanner
+                <BarCodeScanner
                     onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
                     style={styles.cameraConferencia}
-                /> */}
+                />
             </View>
 
             <TouchableWithoutFeedback>
