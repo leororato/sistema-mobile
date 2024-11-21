@@ -3,9 +3,11 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import api from "../../../axiosConfig";
 import Icon from 'react-native-vector-icons/AntDesign';
-import { format } from 'date-fns';
 import { fetchPackingListPorId, fetchPackingLists, insertPackingList } from "../../database/services/packingListService.js";
 import { excluirDatabase } from "../../database/database.js";
+import { insertPackingListProduto } from "../../database/services/packingListProdutoService.js";
+import { insertVolumesProdutos } from "../../database/services/volumeProdutoService.js";
+import { insertVolume } from "../../database/services/volumeService.js";
 
 export default function Inicio({ navigation }) {
 
@@ -52,7 +54,7 @@ export default function Inicio({ navigation }) {
         const packingList = await fetchPackingListPorId(selectedItem);
         if (packingList) {
 
-            navigation.navigate('Conferência', { idPackinglist: selectedItem });
+            navigation.navigate('Coleta', { idPackinglist: selectedItem });
 
         } else {
             Alert.alert(
@@ -67,69 +69,91 @@ export default function Inicio({ navigation }) {
         }
     }
 
-    const importarProdutosDaPackinglist = async () => {
-        const idPackinglist = selectedItem;
-
-        try {
-            const response = await api.get(`/pl-produto/packinglist/${idPackinglist}`);
-
-
-        } catch(error) {
-            console.log("Erro ao importar produtos da packinglist: ", error);
-        }
-    }
-
     const handleImportarPackinglist = async () => {
-
         setContextMenuVisible(false);
         const idPackinglist = selectedItem;
-
+    
         const packinglist = await fetchPackingListPorId(selectedItem);
-
+    
         if (!packinglist) {
-
             try {
-                const response = await api.get(`/packinglist/listar-packinglist-edicao/${idPackinglist}`);
-                const packingList = response.data;
-
+                const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+                const packingList = response.data.packingListImportacaoMobile;
+                const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
+                const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
+                const volumeArray = response.data.volumeImportacaoMobile;
+    
+                console.log('item: ', response.data);
+    
+                // Salvar PackingList principal
                 const packingListImportar = {
-                    dtCriacao: packingList.dtCriacao,
-                    idImportador: packingList.idImportador,
-                    idConsignatario: packingList.idConsignatario,
-                    idNotificado: packingList.idNotificado,
-                    paisOrigem: packingList.paisOrigem,
-                    fronteira: packingList.fronteira,
-                    localEmbarque: packingList.localEmbarque,
-                    localDestino: packingList.localDestino,
-                    TermosPagamento: packingList.TermosPagamento,
-                    dadosBancarios: packingList.dadosBancarios,
-                    INCOTERM: packingList.INCOTERM,
-                    INVOICE: packingList.INVOICE,
-                    meioTransporte: packingList.meioTransporte,
+                    idPackinglist: packingList.idPackinglist,
+                    nomeImportador: packingList.nomeImportador,
                     pesoLiquidoTotal: packingList.pesoLiquidoTotal,
                     pesoBrutoTotal: packingList.pesoBrutoTotal,
-                    idioma: packingList.idioma,
-                    finalizado: packingList.finalizado,
-                    registro_criado_por: packingList.registro_criado_por,
-                    registro_alterado_por: packingList.registro_alterado_por,
-                    registro_criado: packingList.registro_criado,
-                    registro_alterado: packingList.registro_alterado,
-                    registro_deletado: packingList.registro_deletado,
-                    numeroColetas: packingList.numeroColetas,
+                    numeroColetas: packingList.numeroColetas
                 };
-
+    
                 await insertPackingList(packingListImportar);
-                Alert.alert("PackingList importada com sucesso!")
-
+    
+                // Salvar PackingListProduto
+                await Promise.all(
+                    packingListProdutoArray.map(async (packingListProduto) => {
+                        const packingListProdutoImportar = {
+                            idPackinglist: packingListProduto.idPackinglist,
+                            idProduto: packingListProduto.idProduto,
+                            seq: packingListProduto.seq,
+                            produto: packingListProduto.produto,
+                            descricaoProduto: packingListProduto.descricaoProduto,
+                            ordemProducao: packingListProduto.ordemProducao,
+                            totalPesoLiquido: packingListProduto.totalPesoLiquido,
+                            totalPesoBruto: packingListProduto.totalPesoBruto,
+                            numeroSerie: packingListProduto.numeroSerie,
+                        };
+                        await insertPackingListProduto(packingListProdutoImportar);
+                    })
+                );
+    
+                // Salvar VolumeProduto
+                await Promise.all(
+                    volumeProdutoArray.map(async (volumeProduto) => {
+                        const volumeProdutoImportar = {
+                            idVolumeProduto: volumeProduto.idVolumeProduto,
+                            idPackinglist: volumeProduto.idPackinglist,
+                            idProduto: volumeProduto.idProduto,
+                            seq: volumeProduto.seq,
+                            idVolume: volumeProduto.idVolume,
+                            qrCodeVolumeProduto: volumeProduto.qrCodeVolumeProduto,
+                            seqVolume: volumeProduto.seqVolume,
+                        };
+                        await insertVolumesProdutos(volumeProdutoImportar);
+                    })
+                );
+    
+                // Salvar Volumes
+                await Promise.all(
+                    volumeArray.map(async (volume) => {
+                        const volumeImportar = {
+                            idVolume: volume.idVolume,
+                            idTipoVolumeId: volume.idTipoVolumeId,
+                            quantidadeItens: volume.quantidadeItens,
+                            descricao: volume.descricao,
+                            pesoLiquido: volume.pesoLiquido,
+                            pesoBruto: volume.pesoBruto,
+                        };
+                        await insertVolume(volumeImportar);
+                    })
+                );
+    
+                Alert.alert("PackingList importada com sucesso!");
             } catch (error) {
-                console.log('erro ao buscar packinglist: ', error);
+                console.log('Erro ao buscar PackingList: ', error);
             }
-
         } else {
-            Alert.alert("Este packinglist já foi importado")
+            Alert.alert("Este PackingList já foi importado");
         }
-
-    }
+    };
+    
 
 
     const renderContextMenu = () => {
@@ -157,15 +181,12 @@ export default function Inicio({ navigation }) {
                 <View style={[style.row, isLastItem && style.lastRow]}>
                     <Text style={style.cell}>{item.idPackinglist}</Text>
                     <Text style={style.cell}>{item.nomeClienteImportador}</Text>
-                    <Text style={style.cell}>{formatarData(item.dtCriacao)}</Text>
+                    <Text style={style.cell}>{item.numeroColetas ? item.numeroColetas : "0"}</Text>
                 </View>
             </TouchableOpacity>
         );
     };
 
-    const formatarData = (dtCriacao) => {
-        return format(new Date(dtCriacao), 'dd/MM/yyyy - HH:mm');
-    };
 
     return (
         <TouchableWithoutFeedback onPress={() => setContextMenuVisible(false)}>
@@ -187,7 +208,7 @@ export default function Inicio({ navigation }) {
                     <View style={style.header}>
                         <Text style={style.headerCell}>ID</Text>
                         <Text style={style.headerCell}>Importador</Text>
-                        <Text style={style.headerCell}>Data</Text>
+                        <Text style={style.headerCell}>N° Coleta</Text>
                     </View>
                     <FlatList
                         data={packinglistsExistentes}
@@ -226,7 +247,7 @@ const style = StyleSheet.create({
     botaoImportadas: {
         backgroundColor: '#ccc',
         borderRadius: '5px'
-    }, 
+    },
     reloadPackinglist: {
         padding: 5
     },

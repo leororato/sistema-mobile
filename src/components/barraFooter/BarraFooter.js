@@ -13,7 +13,7 @@ export default function BarraFooter({ navigation }) {
             {/* Dividindo com borda no meio */}
             <View style={styles.bordaCentral} />
             <View style={styles.viewIcone}>
-                <TouchableOpacity onPress={() => navigation.navigate('Conferência')}>
+                <TouchableOpacity onPress={() => navigation.navigate('Coleta')}>
                     <Icon name="barcode-outline" size={30} color="#000" />
                 </TouchableOpacity>
             </View>

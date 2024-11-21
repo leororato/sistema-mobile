@@ -2,26 +2,60 @@ import { getDBConnection } from './database';
 
 export const excluirTodasTabelas = async () => {
     const tabelas = [
-        "mv_tipo_volume",
-        "mv_usuario",
-        "mv_cliente",
-        "mv_volumes_produto",
+        "mv_volumes_produto", 
         "mv_volume",
         "mv_packinglist_produto",
-        "mv_packinglist"
+        "mv_packinglist",
+        "mv_coleta",
+        "mv_tipo_volume",
+        "mv_usuario",
+        "mv_cliente"
     ];
 
     const db = await getDBConnection();
 
     try {
+        // Desabilitar restrições de chave estrangeira para permitir exclusões sem problemas
+        await db.execAsync("PRAGMA foreign_keys = OFF");
+
         for (const tabela of tabelas) {
             await db.execAsync(`DROP TABLE IF EXISTS ${tabela}`);
             console.log(`Tabela ${tabela} excluída com sucesso.`);
         }
+
+        // Reabilitar restrições de chave estrangeira após as exclusões
+        await db.execAsync("PRAGMA foreign_keys = ON");
+
     } catch (error) {
         console.error("Erro ao excluir tabelas:", error);
     }
 };
+
+export const createTable_mv_coleta = async () => {
+    const db = await getDBConnection();
+    try {
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS mv_coleta (
+            idColeta INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            idPackinglist BIGINT NOT NULL,
+            idProduto BIGINT NOT NULL,
+            seq BIGINT NOT NULL,
+            idVolume BIGINT NOT NULL,
+            idVolumeProduto BIGINT NOT NULL,
+            idUsuario BIGINT,
+            dataHoraColeta DATETIME,
+            dataHoraImportacao DATETIME,
+            FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),
+            FOREIGN KEY (idProduto, seq, idPackinglist) REFERENCES mv_packinglist_produto (idProduto, seq, idPackinglist),
+            FOREIGN KEY (idVolumeProduto, idPackinglist, idProduto, seq, idVolume) REFERENCES mv_volumes_produto (idVolumeProduto, idPackinglist, idProduto, seq, idVolume),
+            FOREIGN KEY (idUsuario) REFERENCES mv_usuario (id)
+            );
+        `)
+        console.log("Tabela mv_coleta criada com sucesso.");
+    } catch (error) {
+        console.error("Erro ao criar tabela mv_coleta:", error);
+    }
+}
 
 export const createTable_mv_tipo_volume = async () => {
     const db = await getDBConnection();
@@ -34,7 +68,8 @@ export const createTable_mv_tipo_volume = async () => {
             registro_alterado_por BIGINT,
             registro_criado DATETIME,
             registro_alterado DATETIME,
-            registro_deletado TINYINT
+            registro_deletado TINYINT,
+            PRIMARY KEY (idTipoVolume)
             )
             `)
         console.log("Tabela mv_tipo_volume criada com sucesso.");
@@ -53,12 +88,11 @@ export const createTable_mv_usuario = async () => {
             login varchar(100) NOT NULL,
             senha char(50) NOT NULL,
             nivelAcesso char(1) NOT NULL,
-            dtCriacao datetime NOT NULL,
             ativo char(1) NOT NULL,
             PRIMARY KEY (id)
             )
             `)
-            console.log("Tabela mv_usuario criada com sucesso.");
+        console.log("Tabela mv_usuario criada com sucesso.");
     } catch (error) {
         console.error("Erro ao criar tabela mv_usuario:", error);
     }
@@ -76,7 +110,8 @@ export const createTable_mv_cliente = async () => {
             registro_alterado_por BIGINT,
             registro_criado DATETIME,
             registro_alterado DATETIME,
-            registro_deletado TINYINT
+            registro_deletado TINYINT,
+            PRIMARY KEY (idCliente)
             )
             `)
     } catch (error) {
@@ -96,13 +131,8 @@ export const createTable_mv_volumes_produto = async () => {
             seq bigint NOT NULL,
             idVolume bigint NOT NULL,
             qrCodeVolumeProduto varchar(255) NOT NULL,
-            dtCriacao datetime NOT NULL,
-            registro_criado_por bigint NOT NULL,
-            registro_alterado_por bigint DEFAULT NULL,
-            registro_criado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            registro_alterado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            registro_deletado tinyint(1) DEFAULT '0',
-            seqVolume bigint NOT NULL
+            seqVolume bigint NOT NULL,
+            PRIMARY KEY (idVolumeProduto, idPackinglist, idProduto, seq, idVolume)
             )
             `)
         console.log("Tabela mv_volumes_produto criada com sucesso.");
@@ -120,17 +150,8 @@ export const createTable_mv_volume = async () => {
             idTipoVolumeId bigint NOT NULL,
             quantidadeItens bigint NOT NULL,
             descricao varchar(255) NOT NULL,
-            altura varchar(20) DEFAULT NULL,
-            largura varchar(20) DEFAULT NULL,
-            comprimento varchar(20) DEFAULT NULL,
             pesoLiquido decimal(10,3) NOT NULL,
             pesoBruto decimal(10,3) NOT NULL,
-            observacao varchar(255) DEFAULT NULL,
-            registro_criado_por bigint NOT NULL,
-            registro_alterado_por bigint DEFAULT NULL,
-            registro_criado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            registro_alterado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            registro_deletado tinyint(1) DEFAULT '0',
             PRIMARY KEY (idVolume)
             )
             `)
@@ -153,14 +174,6 @@ export const createTable_mv_packinglist_produto = async () => {
             ordemProducao varchar(100) DEFAULT NULL,
             totalPesoLiquido decimal(10,3) DEFAULT NULL,
             totalPesoBruto decimal(10,3) DEFAULT NULL,
-            altura varchar(20) DEFAULT NULL,
-            largura varchar(20) DEFAULT NULL,
-            comprimento varchar(20) DEFAULT NULL,
-            registro_criado_por bigint NOT NULL,
-            registro_alterado_por bigint DEFAULT NULL,
-            registro_criado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            registro_alterado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            registro_deletado tinyint(1) DEFAULT '0',
             numeroSerie bigint DEFAULT NULL,
             PRIMARY KEY (idPackinglist,idProduto,seq)
             );
@@ -177,28 +190,9 @@ export const createTable_mv_packinglist = async () => {
         await db.execAsync(`
             CREATE TABLE IF NOT EXISTS mv_packinglist (
                 idPackinglist bigint NOT NULL,
-                dtCriacao datetime NOT NULL,
-                idImportador bigint NOT NULL,
-                idConsignatario bigint DEFAULT NULL,
-                idNotificado bigint DEFAULT NULL,
-                paisOrigem varchar(500) DEFAULT NULL,
-                fronteira varchar(500) DEFAULT NULL,
-                localEmbarque varchar(500) DEFAULT NULL,
-                localDestino varchar(500) DEFAULT NULL,
-                TermosPagamento varchar(500) DEFAULT NULL,
-                dadosBancarios varchar(500) DEFAULT NULL,
-                INCOTERM varchar(200) DEFAULT NULL,
-                INVOICE varchar(200) DEFAULT NULL,
-                meioTransporte varchar(200) DEFAULT NULL,
+                nomeImportador varchar(150) DEFAULT NULL,
                 pesoLiquidoTotal decimal(10,3) DEFAULT NULL,
                 pesoBrutoTotal decimal(10,3) DEFAULT NULL,
-                idioma varchar(200) NOT NULL,
-                finalizado tinyint(1) DEFAULT '0',
-                registro_criado_por bigint NOT NULL,
-                registro_alterado_por bigint DEFAULT NULL,
-                registro_criado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                registro_alterado datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                registro_deletado tinyint(1) DEFAULT '0',
                 numeroColetas bigint DEFAULT '0',
                 PRIMARY KEY (idPackinglist)
             );

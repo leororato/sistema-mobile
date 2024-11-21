@@ -3,7 +3,11 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
-import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPackingLists } from "../../database/services/packingListService.js";
+import { deletarTodasPackinglistsImportadas, fetchPackingLists } from "../../database/services/packingListService.js";
+import { deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
+import { deletarTodosVolumesProdutosImportados, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
+import { deletarTodosVolumesImportados, fetchVolumes } from "../../database/services/volumeService.js";
+import { deletarTodasColetas } from "../../database/services/coletaService.js";
 
 export default function Importadas({ navigation }) {
 
@@ -18,9 +22,17 @@ export default function Importadas({ navigation }) {
     }, [])
 
     const buscarPackinglistsImportadas = async () => {
-        const pl = await fetchPackingLists();
-        await setPackinglistsExistentes(pl);
-        console.log('pl: ', pl)
+        const packinglist = await fetchPackingLists();
+        const packinglistProduto = await fetchPackingListProdutos();
+        const volumeProduto = await fetchVolumesProdutos();
+        const volumes = await fetchVolumes();
+
+        await setPackinglistsExistentes(packinglist);
+        console.log('packinglist: ', packinglist)
+        console.log('packinglistProduto: ', packinglistProduto)
+        console.log('volumeprodutos: ', volumeProduto)
+        console.log('volumes: ', volumes)
+
     }
 
 
@@ -31,16 +43,13 @@ export default function Importadas({ navigation }) {
             <TouchableOpacity onPressIn={(e) => handlePressIn(e, item)}>
                 <View style={[style.row, isLastItem && style.lastRow]}>
                     <Text style={style.cell}>{item.idPackinglist}</Text>
-                    <Text style={style.cell}>{item.idImportador}</Text>
-                    <Text style={style.cell}>{formatarData(item.dtCriacao)}</Text>
+                    <Text style={style.cell}>{item.nomeImportador}</Text>
+                    <Text style={style.cell}>{item.numeroColetas ? item.numeroColetas : "0"}</Text>
                 </View>
             </TouchableOpacity>
         );
     };
 
-    const formatarData = (dtCriacao) => {
-        return format(new Date(dtCriacao), 'dd/MM/yyyy - HH:mm');
-    };
 
     const handleExcluirPlImportada = async () => {
         setContextMenuVisible(false);
@@ -50,11 +59,26 @@ export default function Importadas({ navigation }) {
         await buscarPackinglistsImportadas();
     }
 
+    const handleMenuColetar = async () => {
+        setContextMenuVisible(false);
+
+        Alert.alert(
+            'Coletar Packinglist',
+            `Deseja coletar a PackingList ${selectedItem}?`,
+            [
+                { text: 'Sim', onPress: () => navigation.navigate('Coleta', { idPackinglist: selectedItem })
+            },
+                { text: 'Não', onPress: () => { }, style: 'cancel' },
+            ],
+            { cancelable: false }
+        );
+    }
+
     const renderContextMenu = () => {
         if (!contextMenuVisible) return null;
         return (
             <View style={[style.contextMenu, { top: contextMenuPosition.y, left: contextMenuPosition.x }]}>
-                <TouchableOpacity onPress={""} style={style.botaoMenuColetar}>
+                <TouchableOpacity onPress={handleMenuColetar} style={style.botaoMenuColetar}>
                     <Text>Coletar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => navigation.navigate('Volumes')} style={style.botaoMenuColetar}>
@@ -87,7 +111,11 @@ export default function Importadas({ navigation }) {
         
         try {
             setContextMenuVisible(false);
+            await deletarTodasColetas();
             await deletarTodasPackinglistsImportadas();
+            await deletarTodasPackinglistProdutosImportadas();
+            await deletarTodosVolumesProdutosImportados();
+            await deletarTodosVolumesImportados();
             await buscarPackinglistsImportadas();
 
         } catch (error) {
@@ -117,7 +145,7 @@ export default function Importadas({ navigation }) {
                     <View style={style.header}>
                         <Text style={style.headerCell}>ID</Text>
                         <Text style={style.headerCell}>Importador</Text>
-                        <Text style={style.headerCell}>Data</Text>
+                        <Text style={style.headerCell}>N° Coletas</Text>
                     </View>
                     <FlatList
                         data={packinglistsExistentes}

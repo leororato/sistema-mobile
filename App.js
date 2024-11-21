@@ -3,12 +3,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Login from './src/pages/Login/Login';
 import Inicio from './src/pages/Inicio/Inicio';
-import Conferencia from './src/pages/Conferencia/Conferencia';
 import BotaoVoltarCabecalho from './src/components/BotaoVoltarCabecalho/BotaoVoltarCabecalho';
 import Importadas from './src/pages/Importadas/Importadas';
 import Volumes from './src/pages/Volumes/Volumes';
-import { createTable_mv_packinglist } from './src/database/database';
 import initializeDatabase from './src/database/initializeDatabase';
+import Coleta from './src/pages/Coleta/Coleta';
 
 const Stack = createNativeStackNavigator();
 
@@ -37,8 +36,8 @@ export default function App() {
           }}
         />
         <Stack.Screen
-          name="Conferência"
-          component={Conferencia}
+          name="Coleta"
+          component={Coleta}
           options={({ navigation }) => ({
             headerLeft: () => <BotaoVoltarCabecalho navigation={navigation} />,
             headerTitleAlign: 'center',
