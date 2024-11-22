@@ -52,8 +52,9 @@ export const fetchVolumesProdutosPorId = async (idVolumeProduto, idPackinglist, 
 export const fetchQuantidadeVolumesProdutosDeUmProduto = async (idPackinglist, idProduto, seq) => {
     const db = await getDBConnection();
     try {
-        const allRows = await db.getFirstAsync('SELECT * FROM mv_volumes_produto WHERE idPackinglist = ? AND idProduto = ? AND seq = ?', [idPackinglist, idProduto, seq]);
-        return Array.isArray(allRows) ? allRows.length : 0;
+        const response = await db.getFirstAsync('SELECT COUNT(*) AS quantidade FROM mv_volumes_produto WHERE idPackinglist = ? AND idProduto = ? AND seq = ?', [idPackinglist, idProduto, seq]);
+        return response.quantidade; 
+        // Array.isArray(allRows) ? allRows.length : 0;
     } catch (error) {
         console.error("Erro ao buscar volumeProduto por ID:", error);
         throw error;

@@ -8,6 +8,7 @@ import Importadas from './src/pages/Importadas/Importadas';
 import Volumes from './src/pages/Volumes/Volumes';
 import initializeDatabase from './src/database/initializeDatabase';
 import Coleta from './src/pages/Coleta/Coleta';
+import { Image, TouchableOpacity } from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
@@ -32,7 +33,22 @@ export default function App() {
           name="Inicio"
           component={Inicio}
           options={{
+            headerTitle: 'Início',
             headerTitleAlign: 'center',
+            headerStyle: {
+              backgroundColor: '#1780E2',
+            },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => alert('Logo clicada')}>
+                <Image
+                  source={require('./assets/logo.png')}
+                  style={{ width: 100, height: 40 }}
+                />
+              </TouchableOpacity>
+            ),
           }}
         />
         <Stack.Screen
@@ -41,6 +57,20 @@ export default function App() {
           options={({ navigation }) => ({
             headerLeft: () => <BotaoVoltarCabecalho navigation={navigation} />,
             headerTitleAlign: 'center',
+            headerStyle: {
+              backgroundColor: '#1780E2',
+            },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => alert('Logo clicada')}>
+                <Image
+                  source={require('./assets/logo.png')}
+                  style={{ width: 100, height: 40 }}
+                />
+              </TouchableOpacity>
+            ),
           })}
         />
         <Stack.Screen
@@ -49,6 +79,20 @@ export default function App() {
           options={({ navigation }) => ({
             headerLeft: () => <BotaoVoltarCabecalho navigation={navigation} />,
             headerTitleAlign: 'center',
+            headerStyle: {
+              backgroundColor: '#1780E2',
+            },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => alert('Logo clicada')}>
+                <Image
+                  source={require('./assets/logo.png')}
+                  style={{ width: 100, height: 40 }}
+                />
+              </TouchableOpacity>
+            ),
           })}
         />
         <Stack.Screen
@@ -57,6 +101,20 @@ export default function App() {
           options={({ navigation }) => ({
             headerLeft: () => <BotaoVoltarCabecalho navigation={navigation} />,
             headerTitleAlign: 'center',
+            headerStyle: {
+              backgroundColor: '#1780E2',
+            },
+            headerTitleStyle: {
+              color: '#fff',
+            },
+            headerLeft: () => (
+              <TouchableOpacity onPress={() => alert('Logo clicada')}>
+                <Image
+                  source={require('./assets/logo.png')}
+                  style={{ width: 100, height: 40 }}
+                />
+              </TouchableOpacity>
+            ),
           })}
         />
       </Stack.Navigator>

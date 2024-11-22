@@ -1,14 +1,15 @@
 import { BarCodeScanner } from "expo-barcode-scanner";
 import { useEffect, useState } from "react";
-import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback } from "react-native";
+import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Alert, Vibration } from "react-native";
 import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useRoute } from "@react-navigation/native";
 import api from "../../../axiosConfig";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
-import { conferirSeJaFoiColetado, deletarTodasColetas, fetchColetas, fetchColetasListPorId, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetados, insertColeta } from "../../database/services/coletaService";
+import { conferirSeJaFoiColetado, deletarTodasColetas, fetchColetas, fetchColetasListPorId, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetados, fetchNaoColetados, insertColeta } from "../../database/services/coletaService";
 import { fetchPackingListProdutoPorId } from "../../database/services/packingListProdutoService";
-import { fetchQuantidadeVolumesProdutosDeUmProduto, fetchVolumesProdutosDeUmProduto } from "../../database/services/volumeProdutoService";
+import { fetchQuantidadeVolumesProdutosDeUmProduto } from "../../database/services/volumeProdutoService";
+import { fetchDescricaoVolume } from "../../database/services/volumeService";
 
 export default function Coleta({ navigation }) {
 
@@ -19,11 +20,15 @@ export default function Coleta({ navigation }) {
 
     const [listaDeProdutosColetados, setListaDeProdutosColetados] = useState([]);
 
+    const [modoExibicaoDosItens, setModoExibicaoDosItens] = useState("Coletados");
+
     const [packingListConferir, setPackingListConferir] = useState([]);
     const [itensColetados, setItensColetados] = useState([]);
+    const [itensNaoColetados, setItensNaoColetados] = useState([]);
 
     const route = useRoute();
     const { idPackinglist } = route.params || {};
+
 
     const getBarCodeScannerPermissoes = async () => {
         const { status } = await BarCodeScanner.requestPermissionsAsync();
@@ -48,12 +53,22 @@ export default function Coleta({ navigation }) {
         }
     }
 
-    const fetchDescricaoProduto = async (idPackinglist, idProduto, seq) => {
+    useEffect(() => {
+        if (modoExibicaoDosItens === "NaoColetados") {
+            fetchVolumesNaoColetados();
+        }
+    }, [modoExibicaoDosItens])
+
+    const fetchVolumesNaoColetados = async () => {
+        setModoExibicaoDosItens("NaoColetados")
         try {
-            const response = fetchPackingListProdutoPorId(idPackinglist, idProduto, seq);
-            return response.descricaoProduto;
+            const response = await fetchNaoColetados();
+            setItensNaoColetados(response);
+            setItensColetados([]);
+
+            console.log('não coletados: ', response);
         } catch (error) {
-            console.log('Erro ao buscar descrição do produto:', error.message);
+            console.log('Erro ao buscar packinglist:', error.message);
         }
     }
 
@@ -62,19 +77,18 @@ export default function Coleta({ navigation }) {
             // Chama a função correta para buscar a quantidade de coletas
             const quantidadeColetada = await fetchColetasPorProduto(idPackinglist, idProduto, seq);
             const quantidadeTotalDeVolumes = await fetchQuantidadeVolumesProdutosDeUmProduto(idPackinglist, idProduto, seq);
-    
+
             const quantidadesColeta = {
                 quantidadeColetada: quantidadeColetada,
                 quantidadeTotalDeVolumes: quantidadeTotalDeVolumes
             }
-    
+
             return quantidadesColeta;
-    
+
         } catch (error) {
             console.log('Erro ao buscar coletas do produto:', error.message);
         }
     }
-    
 
     const adicionarNovoProdutoNaColeta = async ({ idPackinglist, idProduto, seq }) => {
         const response = await fetchPackingListProdutoPorId(idPackinglist, idProduto, seq);
@@ -95,19 +109,26 @@ export default function Coleta({ navigation }) {
 
     const atualizarQuantidadeColetada = (idPackinglist, idProduto, seq) => {
         setListaDeProdutosColetados(prevLista => {
-            return prevLista.map(item => 
-                item.idPackinglist === idPackinglist && 
-                item.idProduto === idProduto && 
-                item.seq === seq
-                    ? { 
-                        ...item, 
-                        quantidadeColetada: item.quantidadeColetada + 1 
+            return prevLista.map(item =>
+                item.idPackinglist === idPackinglist &&
+                    item.idProduto === idProduto &&
+                    item.seq === seq
+                    ? {
+                        ...item,
+                        quantidadeColetada: item.quantidadeColetada + 1
                     }
                     : item
             );
         });
     };
-    
+
+    const vibracao1 = () => {
+        Vibration.vibrate(500);
+    }
+
+    const vibracao2 = () => {
+        Vibration.vibrate([300, 300, 300]);
+    }
 
     const handleBarCodeScanned = async ({ data }) => {
         setScanned(true);
@@ -125,7 +146,14 @@ export default function Coleta({ navigation }) {
 
             const verificarSeJaFoiColetado = await conferirSeJaFoiColetado(idPackinglist, idProduto, seq, idVolume, idVolumeProduto);
             if (verificarSeJaFoiColetado) {
-                alert('Este item já foi coletado!');
+                
+                vibracao2();
+                Alert.alert(
+                    "Atenção",
+                    "Este Volume já foi coletado!",
+                    [{ text: "OK" }]
+                );
+
                 return;
 
             } else {
@@ -141,16 +169,31 @@ export default function Coleta({ navigation }) {
 
                 await insertColeta(coleta_realizada);
                 await fetchColetados();
-                
+                await vibracao1();
+
                 if (!listaDeProdutosColetados.some(item => item.idPackinglist === idPackinglist && item.idProduto === idProduto && item.seq === seq)) {
                     adicionarNovoProdutoNaColeta({ idPackinglist, idProduto, seq });
                 }
-                
+
                 await atualizarQuantidadeColetada(idPackinglist, idProduto, seq);
 
-                console.log('dadosQrCode: ', dadosQrCode);
-                console.log('coleta_realizada: ', coleta_realizada);
-                alert(`Coletado: ${data}`);
+                const response = await fetchDescricaoVolume(idVolume);
+                console.log('response volume: ', response);
+
+                const descricaoVolume = response[0]?.descricao;
+
+                if (descricaoVolume) {
+                    Alert.alert(
+                        "Produto Coletado",
+                        `Descrição: ${descricaoVolume}`,
+                        [{ text: "OK" }]);
+                } else {
+                    Alert.alert(
+                        "Produto Coletado",
+                        "A descrição não foi encontrada",
+                        [{ text: "OK" }]
+                    );
+                }
             }
         } catch (error) {
             console.log('Erro ao coletar item:', error.message);
@@ -159,7 +202,15 @@ export default function Coleta({ navigation }) {
 
     };
 
-    const renderPackingListItem = ({ item, index }) => {
+    useEffect(() => {
+        if (scanned) {
+            setTimeout(() => {
+                setScanned(false);
+            }, 3000)
+        }
+    }, [scanned])
+
+    const renderVolumes = ({ item, index }) => {
         const isLastItem = index === packingListConferir.length - 1;
 
         return (
@@ -184,27 +235,28 @@ export default function Coleta({ navigation }) {
 
             <View>
                 <Text>
-                    {listaDeProdutosColetados && (
-                        listaDeProdutosColetados.map(item => {
-                            return (
-                                <TouchableOpacity key={item.idPackinglista}>
-                                    <Text>{item.descricaoProduto}: [{item.quantidadeColetada}/{item.quantidadeTotalDeVolumes}]</Text>
-                                </TouchableOpacity>
-                            );
-                        })
-                    )}
+                    {listaDeProdutosColetados.map((item, index) => {
+                        return (
+                            <TouchableOpacity key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`}>
+                                <Text>{item.descricaoProduto}: [{item.quantidadeColetada}/{item.quantidadeTotalDeVolumes}]</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </Text>
             </View>
 
             <TouchableWithoutFeedback>
                 <View style={styles.containerToutchable}>
                     <View style={styles.containerBotaoRecarregar}>
-                        <Button 
-                        title="Excluir tudo"
-                        onPress={() => deletarTodasColetas() && fetchColetados() && setListaDeProdutosColetados([])}
+                        <Button
+                            title="Excluir tudo"
+                            onPress={() => deletarTodasColetas() && fetchColetados() && setListaDeProdutosColetados([])}
                         />
                         <TouchableOpacity onPress={fetchColetados}>
                             <Icon name="reload1" size={30} color="#000" />
+                        </TouchableOpacity>
+                        <TouchableOpacity>
+                            <Button title="Não coletados" onPress={fetchVolumesNaoColetados}/>
                         </TouchableOpacity>
                     </View>
 
@@ -215,8 +267,8 @@ export default function Coleta({ navigation }) {
                             <Text style={styles.headerCell}>DT/HR</Text>
                         </View>
                         <FlatList
-                            data={itensColetados}
-                            renderItem={renderPackingListItem}
+                            data={itensColetados ? itensColetados : itensNaoColetados}
+                            renderItem={renderVolumes}
                             keyExtractor={item => item.idColeta}
                         />
                     </View>
@@ -224,9 +276,7 @@ export default function Coleta({ navigation }) {
                 </View>
             </TouchableWithoutFeedback>
 
-            {scanned && (
-                <Button title="Escanear novamente" onPress={() => setScanned(false)} />
-            )}
+
 
             <BarraFooter navigation={navigation} />
         </View>
@@ -309,6 +359,8 @@ const styles = StyleSheet.create({
     },
     containerBotaoRecarregar: {
         width: '100%',
+        display: 'flex',
+        flexDirection: 'row',
         alignItems: 'flex-end',
         paddingRight: 20,
         paddingBottom: 10,

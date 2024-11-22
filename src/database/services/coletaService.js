@@ -54,11 +54,32 @@ export const fetchColetasMaisRecentes = async () => {
     }
 };
 
+export const fetchNaoColetados = async (idPackinglist, idProduto, seq) => {
+    const db = await getDBConnection();
+    try {
+        const allRows = await db.getAllAsync(`SELECT v.idVolumeProduto, v.idPackinglist, v.idProduto, v.seq, v.idVolume
+            FROM mv_volumes_produto v
+            LEFT JOIN mv_coleta c
+                ON v.idPackinglist = c.idPackinglist
+                AND v.idProduto = c.idProduto
+                AND v.seq = c.seq
+                AND v.idVolume = c.idVolume
+                AND v.idVolumeProduto = c.idVolumeProduto
+            WHERE c.idColeta IS NULL;
+        `);
+        console.log("Dados buscados com sucesso:", allRows);
+        return allRows;
+    } catch (error) {
+        console.error("Erro ao buscar coletas:", error);
+        throw error;
+    }
+};
+
 export const fetchColetasPorProduto = async (idPackinglist, idProduto, seq) => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync('SELECT * FROM mv_coleta WHERE idPackinglist = ? AND idProduto = ? AND seq = ?', [idPackinglist, idProduto, seq]);
-        
+
         return Array.isArray(allRows) ? allRows.length : 0;
 
     } catch (error) {

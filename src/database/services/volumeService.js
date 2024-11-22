@@ -38,6 +38,18 @@ export const fetchVolumes = async () => {
     }
 };
 
+export const fetchDescricaoVolume = async (idVolume) => {
+    const db = await getDBConnection();
+    try {
+        const allRows = await db.getAllAsync('SELECT descricao FROM mv_volume WHERE idVolume = ?', [idVolume]);
+        // console.log("Dados buscados com sucesso:", allRows);
+        return allRows;
+    } catch (error) {
+        console.error("Erro ao buscar volumes:", error);
+        throw error;
+    }
+};
+
 export const fetchVolumesPorId = async (idVolume) => {
     const db = await getDBConnection();
     try {
