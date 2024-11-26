@@ -6,7 +6,7 @@ import { useRoute } from "@react-navigation/native";
 import api from "../../../axiosConfig";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
-import { conferirSeJaFoiColetado, deletarTodasColetas, fetchColetas, fetchColetasListPorId, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetados, fetchNaoColetados, insertColeta } from "../../database/services/coletaService";
+import { conferirSeJaFoiColetado, deletarTodasColetas, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetadosDeUmProduto, fetchNaoColetados, fetchProdutosQueTiveramColetas, insertColeta } from "../../database/services/coletaService";
 import { fetchPackingListProdutoPorId } from "../../database/services/packingListProdutoService";
 import { fetchQuantidadeVolumesProdutosDeUmProduto } from "../../database/services/volumeProdutoService";
 import { fetchDescricaoVolume } from "../../database/services/volumeService";
@@ -19,6 +19,7 @@ export default function Coleta({ navigation }) {
     const [scanned, setScanned] = useState(false);
 
     const [listaDeProdutosColetados, setListaDeProdutosColetados] = useState([]);
+    const [listaIncialDeProdutosColetados, setListaInicialDeProdutosColetados] = useState([]);
 
     const [modoExibicaoDosItens, setModoExibicaoDosItens] = useState("Coletados");
 
@@ -38,7 +39,8 @@ export default function Coleta({ navigation }) {
     useEffect(() => {
         getBarCodeScannerPermissoes();
         fetchColetados();
-        console.log('lista: ', listaDeProdutosColetados)
+
+        pesquisarProdutosEVolumesColetados();
 
     }, []);
 
@@ -47,7 +49,7 @@ export default function Coleta({ navigation }) {
         try {
             const response = await fetchColetasMaisRecentes();
             setItensColetados(response);
-            console.log('coletados: ', response)
+
         } catch (error) {
             console.log('Erro ao buscar packinglist:', error.message);
         }
@@ -74,7 +76,7 @@ export default function Coleta({ navigation }) {
 
     const fetchColetasDeUmProduto = async (idPackinglist, idProduto, seq) => {
         try {
-            // Chama a função correta para buscar a quantidade de coletas
+
             const quantidadeColetada = await fetchColetasPorProduto(idPackinglist, idProduto, seq);
             const quantidadeTotalDeVolumes = await fetchQuantidadeVolumesProdutosDeUmProduto(idPackinglist, idProduto, seq);
 
@@ -90,21 +92,54 @@ export default function Coleta({ navigation }) {
         }
     }
 
+    const pesquisarProdutosEVolumesColetados = async () => {
+        const response = await fetchProdutosQueTiveramColetas();
+        const produtos = Array.isArray(response) ? response : [response];
+        
+        const listaDeProdutos = [];
+        
+        for (const produto of produtos) {
+            const quantidadesColeta = await fetchColetasDeUmProduto(
+                produto.idPackinglist,
+                produto.idProduto,
+                produto.seq
+            );
+            
+            const ordemProducao = produto.ordemProducao ? produto.ordemProducao : "Sem ordem";
+
+            const novoProduto = {
+                idPackinglist: produto.idPackinglist,
+                idProduto: produto.idProduto,
+                seq: produto.seq,
+                descricaoProduto: produto.descricaoProduto,
+                ordemProducao: ordemProducao,
+                quantidadeColetada: quantidadesColeta.quantidadeColetada,
+                quantidadeTotalDeVolumes: quantidadesColeta.quantidadeTotalDeVolumes,
+            };
+    
+            listaDeProdutos.push(novoProduto);
+        }
+    
+        setListaInicialDeProdutosColetados(listaDeProdutos);
+    };
+    
+
     const adicionarNovoProdutoNaColeta = async ({ idPackinglist, idProduto, seq }) => {
         const response = await fetchPackingListProdutoPorId(idPackinglist, idProduto, seq);
         const quantidadesColeta = await fetchColetasDeUmProduto(idPackinglist, idProduto, seq);
+        const ordemProducao = response.ordemProducao ? response.ordemProducao : "Sem ordem";
 
         const produto = {
             idPackinglist: idPackinglist,
             idProduto: idProduto,
             seq: seq,
             descricaoProduto: response.descricaoProduto,
+            ordemProducao: ordemProducao,
             quantidadeColetada: quantidadesColeta.quantidadeColetada,
             quantidadeTotalDeVolumes: quantidadesColeta.quantidadeTotalDeVolumes
         }
 
         setListaDeProdutosColetados(prevLista => [...prevLista, produto]);
-        console.log('lista: ', listaDeProdutosColetados)
     }
 
     const atualizarQuantidadeColetada = (idPackinglist, idProduto, seq) => {
@@ -146,7 +181,7 @@ export default function Coleta({ navigation }) {
 
             const verificarSeJaFoiColetado = await conferirSeJaFoiColetado(idPackinglist, idProduto, seq, idVolume, idVolumeProduto);
             if (verificarSeJaFoiColetado) {
-                
+
                 vibracao2();
                 Alert.alert(
                     "Atenção",
@@ -178,7 +213,6 @@ export default function Coleta({ navigation }) {
                 await atualizarQuantidadeColetada(idPackinglist, idProduto, seq);
 
                 const response = await fetchDescricaoVolume(idVolume);
-                console.log('response volume: ', response);
 
                 const descricaoVolume = response[0]?.descricao;
 
@@ -195,6 +229,7 @@ export default function Coleta({ navigation }) {
                     );
                 }
             }
+
         } catch (error) {
             console.log('Erro ao coletar item:', error.message);
 
@@ -216,13 +251,19 @@ export default function Coleta({ navigation }) {
         return (
             <TouchableOpacity>
                 <View style={[styles.row, isLastItem && styles.lastRow]}>
-                    <Text style={styles.cellWithBorder}>{item.idColeta}</Text>
-                    <Text style={styles.cell}>{item.idPackinglist}</Text>
+                    <Text style={styles.cellWithBorder}>{item.seq}</Text>
+                    <Text style={styles.cell}>{item.descricao}</Text>
                     <Text style={styles.cell}>{item.dataHoraColeta}</Text>
                 </View>
             </TouchableOpacity>
         );
     };
+
+    const buscarListaDeColetadosDeUmProduto = async (idPackinglist, idProduto, seq) => {
+        const response = await fetchItensColetadosDeUmProduto(idPackinglist, idProduto, seq);
+
+        setItensColetados(response);
+    }
 
     return (
         <View style={styles.containerConferencia}>
@@ -235,39 +276,50 @@ export default function Coleta({ navigation }) {
 
             <View>
                 <Text>
-                    {listaDeProdutosColetados.map((item, index) => {
-                        return (
-                            <TouchableOpacity key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`}>
-                                <Text>{item.descricaoProduto}: [{item.quantidadeColetada}/{item.quantidadeTotalDeVolumes}]</Text>
+                    {listaDeProdutosColetados && listaDeProdutosColetados.length > 0 ? (
+                        listaDeProdutosColetados.map((item, index) => (
+                            <TouchableOpacity style={[styles.produtoColetado, {marginBottom: 10}]} key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`}>
+                                <Text style={{marginTop: '5px'}}>
+                                    {item.ordemProducao} / {item.descricaoProduto}: [{item.quantidadeColetada}/{item.quantidadeTotalDeVolumes}]
+                                </Text>
                             </TouchableOpacity>
-                        );
-                    })}
+                        ))
+                    ) : (
+                        listaIncialDeProdutosColetados.map((item, index) => (
+                            <TouchableOpacity style={[styles.produtoColetado, {marginBottom: 10}]} key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`} onPress={() => buscarListaDeColetadosDeUmProduto(item.idPackinglist, item.idProduto, item.seq)}>
+                                <Text style={styles.textoProdutoColetado}>
+                                {item.ordemProducao} / {item.descricaoProduto}:  [{item.quantidadeColetada}/{item.quantidadeTotalDeVolumes}]
+                                </Text>
+                            </TouchableOpacity>
+                        ))
+                    )}
                 </Text>
             </View>
+
 
             <TouchableWithoutFeedback>
                 <View style={styles.containerToutchable}>
                     <View style={styles.containerBotaoRecarregar}>
                         <Button
                             title="Excluir tudo"
-                            onPress={() => deletarTodasColetas() && fetchColetados() && setListaDeProdutosColetados([])}
+                            onPress={() => deletarTodasColetas() && fetchColetados() && setListaDeProdutosColetados([]) && setListaInicialDeProdutosColetados([])}
                         />
                         <TouchableOpacity onPress={fetchColetados}>
                             <Icon name="reload1" size={30} color="#000" />
                         </TouchableOpacity>
                         <TouchableOpacity>
-                            <Button title="Não coletados" onPress={fetchVolumesNaoColetados}/>
+                            <Button title="Não coletados" onPress={fetchVolumesNaoColetados} />
                         </TouchableOpacity>
                     </View>
 
                     <View style={styles.table}>
                         <View style={styles.header}>
-                            <Text style={styles.headerCell}>ID Coleta</Text>
-                            <Text style={styles.headerCell}>ID PL</Text>
+                            <Text style={styles.headerCell}>Seq</Text>
+                            <Text style={styles.headerCell}>Descrição</Text>
                             <Text style={styles.headerCell}>DT/HR</Text>
                         </View>
                         <FlatList
-                            data={itensColetados ? itensColetados : itensNaoColetados}
+                            data={itensColetados.length > 0 ? itensColetados : itensNaoColetados}
                             renderItem={renderVolumes}
                             keyExtractor={item => item.idColeta}
                         />
@@ -380,5 +432,13 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.8,
         shadowRadius: 2,
         elevation: 5,
+    },
+    produtoColetado: {
+        borderWidth: 1,
+        borderColor: 'red',
+        width: '100%'
+    },
+    textoProdutoColetado: {
+        padding: 5,
     },
 });

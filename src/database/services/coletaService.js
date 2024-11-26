@@ -42,11 +42,32 @@ export const fetchColetas = async () => {
     }
 };
 
+export const fetchItensColetadosDeUmProduto = async (idPackinglist, idProduto, seq) => {
+    const db = await getDBConnection();
+    try {
+        const resposne = await db.getAllAsync(`SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao
+        FROM mv_coleta c
+        LEFT JOIN mv_volume v
+        ON c.idVolume = v.idVolume
+        WHERE idPackinglist = ? AND idProduto = ? AND seq = ? 
+        ORDER BY dataHoraColeta DESC`, [idPackinglist, idProduto, seq]);
+        return resposne;
+    } catch (error) {
+        console.error("Erro ao buscar coletas:", error);
+        throw error;
+    }
+};
+
 export const fetchColetasMaisRecentes = async () => {
     const db = await getDBConnection();
     try {
-        const allRows = await db.getAllAsync('SELECT * FROM mv_coleta ORDER BY dataHoraColeta DESC');
-        // console.log("Dados buscados com sucesso:", allRows);
+        const allRows = await db.getAllAsync(`
+        SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao
+        FROM mv_coleta c
+        LEFT JOIN mv_volume v
+        ON c.idVolume = v.idVolume
+        ORDER BY dataHoraColeta DESC
+        `);
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar coletas:", error);
@@ -54,17 +75,31 @@ export const fetchColetasMaisRecentes = async () => {
     }
 };
 
+// export const fetchColetasMaisRecentes = async () => {
+//     const db = await getDBConnection();
+//     try {
+//         const allRows = await db.getAllAsync('SELECT * FROM mv_coleta ORDER BY dataHoraColeta DESC');
+
+//         return allRows;
+//     } catch (error) {
+//         console.error("Erro ao buscar coletas:", error);
+//         throw error;
+//     }
+// };
+
 export const fetchNaoColetados = async (idPackinglist, idProduto, seq) => {
     const db = await getDBConnection();
     try {
-        const allRows = await db.getAllAsync(`SELECT v.idVolumeProduto, v.idPackinglist, v.idProduto, v.seq, v.idVolume
-            FROM mv_volumes_produto v
+        const allRows = await db.getAllAsync(`SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao
+            FROM mv_volumes_produto vv
             LEFT JOIN mv_coleta c
-                ON v.idPackinglist = c.idPackinglist
-                AND v.idProduto = c.idProduto
-                AND v.seq = c.seq
-                AND v.idVolume = c.idVolume
-                AND v.idVolumeProduto = c.idVolumeProduto
+                ON vv.idPackinglist = c.idPackinglist
+                AND vv.idProduto = c.idProduto
+                AND vv.seq = c.seq
+                AND vv.idVolume = c.idVolume
+                AND vv.idVolumeProduto = c.idVolumeProduto
+            LEFT JOIN mv_volume v 
+            ON vv.idVolume = v.idVolume
             WHERE c.idColeta IS NULL;
         `);
         console.log("Dados buscados com sucesso:", allRows);
@@ -87,6 +122,25 @@ export const fetchColetasPorProduto = async (idPackinglist, idProduto, seq) => {
         throw error;
     }
 };
+
+export const fetchProdutosQueTiveramColetas = async () => {
+    const db = await getDBConnection();
+
+    try {
+        const response = await db.getAllAsync(`
+            SELECT DISTINCT pp.idProduto, pp.idPackinglist, pp.seq, pp.*
+            FROM mv_coleta c
+            JOIN mv_packinglist_produto pp 
+            ON c.idPackinglist = pp.idPackinglist
+            AND c.idProduto = pp.idProduto
+            AND c.seq = pp.seq
+        `);
+        return response;
+    } catch (error) {
+        console.log("Erro ao buscar produtos que tiveram coletas");
+        throw error;
+    }
+}
 
 export const conferirSeJaFoiColetado = async (idPackinglist, idProduto, seq, idVolume, idVolumeProduto) => {
     const db = await getDBConnection();
