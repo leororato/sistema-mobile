@@ -19,7 +19,6 @@ export const insertVolumesProdutos = async (data) => {
                 data.seqVolume
             ]
         );
-       // console.log("Dados inseridos com sucesso:", result.lastInsertRowId);
     } catch (error) {
         console.error("Erro ao inserir dados:", error);
     }
@@ -30,7 +29,6 @@ export const fetchVolumesProdutos = async () => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync('SELECT * FROM mv_volumes_produto');
-        // console.log("Dados buscados com sucesso:", allRows);
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar volumes produtos:", error);
@@ -76,6 +74,20 @@ export const deletarVolumeProdutoPorId = async (idVolumeProduto, idPackinglist, 
     const db = await getDBConnection();
     try {
         await db.runAsync('DELETE FROM mv_volumes_produto WHERE idVolumeProduto = ? AND idPackinglist = ? AND idProduto = ? AND seq = ? AND idVolume = ?', [idVolumeProduto, idPackinglist, idProduto, seq, idVolume]);
+        Alert.alert('VolumeProduto removido com sucesso');
+    } catch (error) {
+        console.error("Erro ao remover volumeProduto por ID:", error);
+        throw error;
+    }
+}
+
+export const deletarVolumeProdutoPorIdPackinglist = async (idPackinglist) => {
+    const db = await getDBConnection();
+    try {
+        await db.runAsync(`DELETE FROM mv_volumes_produto vp AND mv_volumes 
+            LEFT JOIN mv_volumes v
+            ON vp.idVolume = v.idVolume
+            WHERE vp.idPackinglist = ?`, [idPackinglist]);
         Alert.alert('VolumeProduto removido com sucesso');
     } catch (error) {
         console.error("Erro ao remover volumeProduto por ID:", error);

@@ -23,7 +23,7 @@ export const insertPackingListProduto = async (data) => {
                 data.numeroSerie
             ]
         );
-       // console.log("Dados inseridos com sucesso:", result.lastInsertRowId);
+
     } catch (error) {
         console.error("Erro ao inserir dados:", error);
     }
@@ -34,7 +34,7 @@ export const fetchPackingListProdutos = async () => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync('SELECT * FROM mv_packinglist_produto');
-        // console.log("Dados buscados com sucesso:", allRows);
+
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar packinglists_produtos:", error);

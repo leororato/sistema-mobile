@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
 import { deletarTodasPackinglistsImportadas, fetchPackingLists } from "../../database/services/packingListService.js";
-import { deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
+import { deletarPackinglistPorId, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
 import { deletarTodosVolumesProdutosImportados, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { deletarTodosVolumesImportados, fetchVolumes } from "../../database/services/volumeService.js";
 import { deletarTodasColetas } from "../../database/services/coletaService.js";
@@ -28,10 +28,6 @@ export default function Importadas({ navigation }) {
         const volumes = await fetchVolumes();
 
         await setPackinglistsExistentes(packinglist);
-        console.log('packinglist: ', packinglist)
-        console.log('packinglistProduto: ', packinglistProduto)
-        console.log('volumeprodutos: ', volumeProduto)
-        console.log('volumes: ', volumes)
 
     }
 
@@ -53,9 +49,24 @@ export default function Importadas({ navigation }) {
 
     const handleExcluirPlImportada = async () => {
         setContextMenuVisible(false);
-
         let id = selectedItem;
-        await deletarPackinglistPorId(id);
+
+        Alert.alert(
+            'Excluir importação',
+            `Tem certeza que deseja excluir a PackingList ${selectedItem}?`,
+            [
+                { text: 'Sim', onPress: () => deletarItensPackinglist(id)
+            },
+                { text: 'Não', onPress: () => { }, style: 'cancel' },
+            ],
+            { cancelable: false }
+        );
+    }
+
+    const deletarItensPackinglist = async (idPackinglist) => {
+        
+        await deletarPackinglistPorId(idPackinglist);
+        
         await buscarPackinglistsImportadas();
     }
 
@@ -79,10 +90,7 @@ export default function Importadas({ navigation }) {
         return (
             <View style={[style.contextMenu, { top: contextMenuPosition.y, left: contextMenuPosition.x }]}>
                 <TouchableOpacity onPress={handleMenuColetar} style={style.botaoMenuColetar}>
-                    <Text>Coletar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => navigation.navigate('Volumes')} style={style.botaoMenuColetar}>
-                    <Text>Volumes</Text>
+                    <Text>Exportar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleExcluirPlImportada} style={style.botaoMenuColetar}>
                     <Text>Excluir</Text>
@@ -166,11 +174,10 @@ const style = StyleSheet.create({
     containerImportados: {
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
     },
     containerInicio: {
         flex: 1,
-        justifyContent: 'center',
+        marginTop: 40,
         alignItems: 'center',
         backgroundColor: '#F5F5F5',
         width: '100%',
@@ -215,7 +222,7 @@ const style = StyleSheet.create({
         alignItems: 'center',
     },
     table: {
-        width: '90%',
+        width: '100%',
         marginBottom: 20,
         borderColor: '#ccc',
         borderWidth: '1px'

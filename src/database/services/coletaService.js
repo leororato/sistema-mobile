@@ -5,7 +5,6 @@ export const insertColeta = async (data) => {
     const db = await getDBConnection();
 
     try {
-        console.log("Dados para inserção:", data);
 
         const result = await db.runAsync(
             `INSERT INTO mv_coleta (
@@ -23,7 +22,6 @@ export const insertColeta = async (data) => {
                 data.dataHoraImportacao
             ]
         );
-        // console.log("Dados inseridos com sucesso:", result.lastInsertRowId);
     } catch (error) {
         console.error("Erro ao inserir dados:", error);
     }
@@ -34,7 +32,6 @@ export const fetchColetas = async () => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync('SELECT * FROM mv_coleta');
-        // console.log("Dados buscados com sucesso:", allRows);
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar coletas:", error);
@@ -45,11 +42,13 @@ export const fetchColetas = async () => {
 export const fetchItensColetadosDeUmProduto = async (idPackinglist, idProduto, seq) => {
     const db = await getDBConnection();
     try {
-        const resposne = await db.getAllAsync(`SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao
+        const resposne = await db.getAllAsync(`SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
         FROM mv_coleta c
         LEFT JOIN mv_volume v
         ON c.idVolume = v.idVolume
-        WHERE idPackinglist = ? AND idProduto = ? AND seq = ? 
+        LEFT JOIN mv_volumes_produto vv
+        ON c.idVolume = vv.idVolume
+        WHERE c.idPackinglist = ? AND c.idProduto = ? AND c.seq = ? 
         ORDER BY dataHoraColeta DESC`, [idPackinglist, idProduto, seq]);
         return resposne;
     } catch (error) {
@@ -62,10 +61,12 @@ export const fetchColetasMaisRecentes = async () => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync(`
-        SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao
+        SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
         FROM mv_coleta c
         LEFT JOIN mv_volume v
         ON c.idVolume = v.idVolume
+        LEFT JOIN mv_volumes_produto vv
+        ON c.idVolume = vv.idVolume
         ORDER BY dataHoraColeta DESC
         `);
         return allRows;
@@ -75,19 +76,7 @@ export const fetchColetasMaisRecentes = async () => {
     }
 };
 
-// export const fetchColetasMaisRecentes = async () => {
-//     const db = await getDBConnection();
-//     try {
-//         const allRows = await db.getAllAsync('SELECT * FROM mv_coleta ORDER BY dataHoraColeta DESC');
-
-//         return allRows;
-//     } catch (error) {
-//         console.error("Erro ao buscar coletas:", error);
-//         throw error;
-//     }
-// };
-
-export const fetchNaoColetados = async (idPackinglist, idProduto, seq) => {
+export const fetchNaoColetados = async () => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync(`SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao
@@ -102,8 +91,37 @@ export const fetchNaoColetados = async (idPackinglist, idProduto, seq) => {
             ON vv.idVolume = v.idVolume
             WHERE c.idColeta IS NULL;
         `);
-        console.log("Dados buscados com sucesso:", allRows);
+
         return allRows;
+    } catch (error) {
+        console.error("Erro ao buscar coletas:", error);
+        throw error;
+    }
+};
+
+export const fetchNaoColetadosPorProduto = async (idPackinglist, idProduto, seq) => {
+    const db = await getDBConnection();
+    try {
+        const response = await db.getAllAsync(`
+            SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao 
+            FROM mv_volumes_produto vv LEFT JOIN mv_coleta c
+            ON vv.idPackinglist = c.idPackinglist
+            AND vv.idProduto = c.idProduto
+            AND vv.seq = c.seq
+            AND vv.idVolume = c.idVolume
+            AND vv.idVolumeProduto = c.idVolumeProduto
+            LEFT JOIN 
+            mv_volume v 
+            ON vv.idVolume = v.idVolume
+            WHERE 
+            vv.idPackinglist = ? 
+            AND vv.idProduto = ? 
+            AND vv.seq = ? 
+            AND c.idColeta IS NULL;
+
+        `, [idPackinglist, idProduto, seq]);
+
+        return response;
     } catch (error) {
         console.error("Erro ao buscar coletas:", error);
         throw error;

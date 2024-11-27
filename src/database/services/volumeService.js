@@ -19,7 +19,6 @@ export const insertVolume = async (data) => {
                 data.pesoBruto
             ]
         );
-       // console.log("Dados inseridos com sucesso:", result.lastInsertRowId);
     } catch (error) {
         console.error("Erro ao inserir dados:", error);
     }
@@ -30,7 +29,6 @@ export const fetchVolumes = async () => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync('SELECT * FROM mv_volume');
-        // console.log("Dados buscados com sucesso:", allRows);
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar volumes:", error);
@@ -42,7 +40,6 @@ export const fetchDescricaoVolume = async (idVolume) => {
     const db = await getDBConnection();
     try {
         const allRows = await db.getAllAsync('SELECT descricao FROM mv_volume WHERE idVolume = ?', [idVolume]);
-        // console.log("Dados buscados com sucesso:", allRows);
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar volumes:", error);

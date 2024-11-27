@@ -8,6 +8,7 @@ import { excluirDatabase } from "../../database/database.js";
 import { insertPackingListProduto } from "../../database/services/packingListProdutoService.js";
 import { insertVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { insertVolume } from "../../database/services/volumeService.js";
+import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
 
 export default function Inicio({ navigation }) {
 
@@ -24,8 +25,20 @@ export default function Inicio({ navigation }) {
 
     const fetchPackinglistsInicio = async () => {
         try {
-            const response = await api.get('/packinglist/mobile-listagem-packinglist-inicio');
-            setPackinglistsExistentes(response.data);
+            const statusInternet = await internetStatus();
+            console.log('statusnet: ', statusInternet)
+            if (statusInternet) {
+                const response = await api.get('/packinglist/mobile-listagem-packinglist-inicio');
+                setPackinglistsExistentes(response.data);
+            } else {
+                Alert.alert(
+                    'Atenção',
+                    'Não há conexão com a internet. Não foi possível buscar os Packinglists.',
+                    [
+                        { text: 'OK', onPress: () => { }, style: 'cancel' },
+                    ],
+                );
+            }
 
         } catch (error) {
             console.log("Erro ao carregar packinglists: ", error);
@@ -69,88 +82,112 @@ export default function Inicio({ navigation }) {
         }
     }
 
+    const importar = async () => {
+        const idPackinglist = selectedItem;
+        const statusInternet = internetStatus();
+        try {
+
+            if (statusInternet) {
+
+            const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+            const packingList = response.data.packingListImportacaoMobile;
+            const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
+            const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
+            const volumeArray = response.data.volumeImportacaoMobile;
+
+            // Salvar PackingList principal
+            const packingListImportar = {
+                idPackinglist: packingList.idPackinglist,
+                nomeImportador: packingList.nomeImportador,
+                pesoLiquidoTotal: packingList.pesoLiquidoTotal,
+                pesoBrutoTotal: packingList.pesoBrutoTotal,
+                numeroColetas: packingList.numeroColetas
+            };
+
+            await insertPackingList(packingListImportar);
+
+            // Salvar PackingListProduto
+            await Promise.all(
+                packingListProdutoArray.map(async (packingListProduto) => {
+                    const packingListProdutoImportar = {
+                        idPackinglist: packingListProduto.idPackinglist,
+                        idProduto: packingListProduto.idProduto,
+                        seq: packingListProduto.seq,
+                        produto: packingListProduto.produto,
+                        descricaoProduto: packingListProduto.descricaoProduto,
+                        ordemProducao: packingListProduto.ordemProducao,
+                        totalPesoLiquido: packingListProduto.totalPesoLiquido,
+                        totalPesoBruto: packingListProduto.totalPesoBruto,
+                        numeroSerie: packingListProduto.numeroSerie,
+                    };
+                    await insertPackingListProduto(packingListProdutoImportar);
+                })
+            );
+
+            // Salvar VolumeProduto
+            await Promise.all(
+                volumeProdutoArray.map(async (volumeProduto) => {
+                    const volumeProdutoImportar = {
+                        idVolumeProduto: volumeProduto.idVolumeProduto,
+                        idPackinglist: volumeProduto.idPackinglist,
+                        idProduto: volumeProduto.idProduto,
+                        seq: volumeProduto.seq,
+                        idVolume: volumeProduto.idVolume,
+                        qrCodeVolumeProduto: volumeProduto.qrCodeVolumeProduto,
+                        seqVolume: volumeProduto.seqVolume,
+                    };
+                    await insertVolumesProdutos(volumeProdutoImportar);
+                })
+            );
+
+            // Salvar Volumes
+            await Promise.all(
+                volumeArray.map(async (volume) => {
+                    const volumeImportar = {
+                        idVolume: volume.idVolume,
+                        idTipoVolumeId: volume.idTipoVolumeId,
+                        quantidadeItens: volume.quantidadeItens,
+                        descricao: volume.descricao,
+                        pesoLiquido: volume.pesoLiquido,
+                        pesoBruto: volume.pesoBruto,
+                    };
+                    await insertVolume(volumeImportar);
+                })
+            );
+
+            Alert.alert("PackingList importada com sucesso!");
+        } else {
+            Alert.alert(
+                'Atenção',
+                'Não há conexão com a internet. Não foi possível importar a packinglist.',
+                [
+                    { text: 'OK', onPress: () => { }, style: 'cancel' },
+                ],
+            );
+        }
+
+        } catch (error) {
+            console.log('Erro ao buscar PackingList: ', error);
+        }
+    }
+
     const handleImportarPackinglist = async () => {
         setContextMenuVisible(false);
-        const idPackinglist = selectedItem;
     
         const packinglist = await fetchPackingListPorId(selectedItem);
     
         if (!packinglist) {
-            try {
-                const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
-                const packingList = response.data.packingListImportacaoMobile;
-                const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
-                const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
-                const volumeArray = response.data.volumeImportacaoMobile;
-    
-                console.log('item: ', response.data);
-    
-                // Salvar PackingList principal
-                const packingListImportar = {
-                    idPackinglist: packingList.idPackinglist,
-                    nomeImportador: packingList.nomeImportador,
-                    pesoLiquidoTotal: packingList.pesoLiquidoTotal,
-                    pesoBrutoTotal: packingList.pesoBrutoTotal,
-                    numeroColetas: packingList.numeroColetas
-                };
-    
-                await insertPackingList(packingListImportar);
-    
-                // Salvar PackingListProduto
-                await Promise.all(
-                    packingListProdutoArray.map(async (packingListProduto) => {
-                        const packingListProdutoImportar = {
-                            idPackinglist: packingListProduto.idPackinglist,
-                            idProduto: packingListProduto.idProduto,
-                            seq: packingListProduto.seq,
-                            produto: packingListProduto.produto,
-                            descricaoProduto: packingListProduto.descricaoProduto,
-                            ordemProducao: packingListProduto.ordemProducao,
-                            totalPesoLiquido: packingListProduto.totalPesoLiquido,
-                            totalPesoBruto: packingListProduto.totalPesoBruto,
-                            numeroSerie: packingListProduto.numeroSerie,
-                        };
-                        await insertPackingListProduto(packingListProdutoImportar);
-                    })
-                );
-    
-                // Salvar VolumeProduto
-                await Promise.all(
-                    volumeProdutoArray.map(async (volumeProduto) => {
-                        const volumeProdutoImportar = {
-                            idVolumeProduto: volumeProduto.idVolumeProduto,
-                            idPackinglist: volumeProduto.idPackinglist,
-                            idProduto: volumeProduto.idProduto,
-                            seq: volumeProduto.seq,
-                            idVolume: volumeProduto.idVolume,
-                            qrCodeVolumeProduto: volumeProduto.qrCodeVolumeProduto,
-                            seqVolume: volumeProduto.seqVolume,
-                        };
-                        await insertVolumesProdutos(volumeProdutoImportar);
-                    })
-                );
-    
-                // Salvar Volumes
-                await Promise.all(
-                    volumeArray.map(async (volume) => {
-                        const volumeImportar = {
-                            idVolume: volume.idVolume,
-                            idTipoVolumeId: volume.idTipoVolumeId,
-                            quantidadeItens: volume.quantidadeItens,
-                            descricao: volume.descricao,
-                            pesoLiquido: volume.pesoLiquido,
-                            pesoBruto: volume.pesoBruto,
-                        };
-                        await insertVolume(volumeImportar);
-                    })
-                );
-    
-                Alert.alert("PackingList importada com sucesso!");
-            } catch (error) {
-                console.log('Erro ao buscar PackingList: ', error);
-            }
+            importar();
         } else {
-            Alert.alert("Este PackingList já foi importado");
+            Alert.alert(
+                'Importar Packinglist',
+                'Esta packinglist já foi importado, deseja atualizá-lo?',
+                [
+                    { text: 'Sim', onPress: () => importar() },
+                    { text: 'Não', onPress: () => { }, style: 'cancel' },
+                ],
+                { cancelable: false }
+            );        
         }
     };
     
@@ -228,8 +265,9 @@ export default function Inicio({ navigation }) {
 const style = StyleSheet.create({
     containerInicio: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         alignItems: 'center',
+        paddingTop: 40,
         backgroundColor: '#F5F5F5',
         width: '100%',
         height: '100%',
