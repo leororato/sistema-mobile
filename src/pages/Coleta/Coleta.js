@@ -1,6 +1,6 @@
 import { BarCodeScanner } from "expo-barcode-scanner";
-import { useEffect, useState } from "react";
-import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Alert, Vibration, ScrollView, Keyboard } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Alert, Vibration, ScrollView, Keyboard, Animated } from "react-native";
 import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useRoute } from "@react-navigation/native";
 import api from "../../../axiosConfig";
@@ -23,10 +23,10 @@ export default function Coleta({ navigation }) {
 
     const [modoExibicaoDosItens, setModoExibicaoDosItens] = useState("Coletados");
     const [selecionado, setSelecionado] = useState("coletados");
+    const animacao = useRef(new Animated.Value(0)).current;
 
     const [itensColetados, setItensColetados] = useState([]);
     const [itensNaoColetados, setItensNaoColetados] = useState([]);
-    const [ultimoVolumeColetado, setUltimoVolumeColetado] = useState({ idPackinglist: null, idProduto: null, seq: null });
 
     const [produtoSelecionado, setProdutoSelecionado] = useState({ idPackinglist: null, idProduto: null, seq: null })
 
@@ -42,46 +42,23 @@ export default function Coleta({ navigation }) {
     // roda a permissao e chama funçao para exibir os produtos que foram importados, aparecendo no topo da tela
     useEffect(() => {
         getBarCodeScannerPermissoes();
+
         fetchColetados();
-
         fetchListaProdutos();
-
     }, []);
 
     // funçao que procura e retorna todas as coletas de um produto, ordenando pela dataHoraColeta
-    const fetchColetados = async (idPackinglistColetado, idProdutoColetado, seqColetado) => {
-
+    const fetchColetados = async () => {
+        setItensNaoColetados([]);
         try {
-            let idPackinglist;
-            let idProduto;
-            let seq;
+
             if (!produtoSelecionado || produtoSelecionado.idPackinglist === null || produtoSelecionado.idProduto === null || produtoSelecionado.seq === null) {
                 const response = await fetchColetasMaisRecentes();
-                if (response.length > 0) {
-                    setItensColetados(response);
-
-                } else {
-                    setItensColetados([{ descricao: "Não há volumes coletados" }]);
-                }
-
+                setItensColetados(response);
             } else {
-                if (idPackinglistColetado === produtoSelecionado.idPackinglist && idProdutoColetado === produtoSelecionado.idProduto && seqColetado === produtoSelecionado.seq) {
-                    idPackinglist = produtoSelecionado.idPackinglist;
-                    idProduto = produtoSelecionado.idProduto;
-                    seq = produtoSelecionado.seq;   
-                } else {
-                    idPackinglist = idPackinglistColetado;
-                    idProduto = idProdutoColetado;
-                    seq = seqColetado; 
-                }   
-
-                const response = await fetchItensColetadosDeUmProduto(idPackinglist, idProduto, seq);
                 
-                if (response.length > 0) {
-                    setItensColetados(response);
-                } else {
-                    setItensColetados([{ descricao: "Todos os volumes foram coletados" }]);
-                }
+                const response = await fetchItensColetadosDeUmProduto(produtoSelecionado.idPackinglist, produtoSelecionado.idProduto, produtoSelecionado.seq);
+                setItensColetados(response);
             }
 
         } catch (error) {
@@ -89,15 +66,40 @@ export default function Coleta({ navigation }) {
         }
     }
 
+    const fetchColetadosDoProdutoQueFoiColetado = async (idPackinglistColetado, idProdutoColetado, seqColetado) => {
+        setItensNaoColetados([]);
 
-    // chama a funçao para exibir os produtos que nao foram coletados ainda
+        try {
+            let idPackinglist;
+            let idProduto;
+            let seq; 
+                if (idPackinglistColetado === produtoSelecionado.idPackinglist && idProdutoColetado === produtoSelecionado.idProduto && seqColetado === produtoSelecionado.seq) {
+                    idPackinglist = produtoSelecionado.idPackinglist;
+                    idProduto = produtoSelecionado.idProduto;
+                    seq = produtoSelecionado.seq;
+                } else {
+                    idPackinglist = idPackinglistColetado;
+                    idProduto = idProdutoColetado;
+                    seq = seqColetado;
+                }
+
+                const response = await fetchItensColetadosDeUmProduto(idPackinglist, idProduto, seq);
+                setItensColetados(response);
+
+        } catch (error) {
+            console.log('Erro ao buscar packinglist:', error.message);
+        }
+    }
+
+
+    // chama a funçao para exibir os volumes que nao foram coletados ainda
     useEffect(() => {
         if (modoExibicaoDosItens === "NaoColetados") {
             fetchVolumesNaoColetados();
         }
     }, [modoExibicaoDosItens]);
 
-    // funçao que exibe os produtos que nao foram coletados
+    // funçao que exibe os volumes que nao foram coletados
     const fetchVolumesNaoColetados = async () => {
         setModoExibicaoDosItens("NaoColetados")
         try {
@@ -106,6 +108,8 @@ export default function Coleta({ navigation }) {
                 const response = await fetchNaoColetados();
                 setItensNaoColetados(response);
                 setItensColetados([]);
+                console.log('todos nao coletados')
+
             } else {
                 const idPackinglist = produtoSelecionado.idPackinglist;
                 const idProduto = produtoSelecionado.idProduto;
@@ -113,6 +117,7 @@ export default function Coleta({ navigation }) {
                 const response = await fetchNaoColetadosPorProduto(idPackinglist, idProduto, seq);
                 setItensNaoColetados(response);
                 setItensColetados([]);
+                console.log('nao coletados de um produto')
             }
 
 
@@ -244,7 +249,7 @@ export default function Coleta({ navigation }) {
                     }
 
                     await insertColeta(coleta_realizada);
-                    await fetchColetados(idPackinglist, idProduto, seq);
+                    await fetchColetadosDoProdutoQueFoiColetado(idPackinglist, idProduto, seq);
                     await fetchListaProdutos();
                     await vibracao1();
 
@@ -313,7 +318,6 @@ export default function Coleta({ navigation }) {
             const response = await fetchItensColetadosDeUmProduto(idPackinglist, idProduto, seq);
             if (response.length > 0) {
                 setItensColetados(response);
-
             } else {
                 setItensColetados([{ descricao: "Não há itens coletados" }])
             }
@@ -322,18 +326,21 @@ export default function Coleta({ navigation }) {
             if (response.length > 0) {
                 setItensNaoColetados(response);
             } else {
-                setItensNaoColetados([{ descricao: "Não há itens não coletados" }])
+                setItensNaoColetados([{ descricao: "Todos os itens deste produto foram coletados" }])
             }
         }
     }
 
     useEffect(() => {
+        if ((produtoSelecionado || produtoSelecionado.idPackinglist != null || produtoSelecionado.idProduto != null || produtoSelecionado.seq != null) && selecionado === "coletados") {
+            fetchColetados()
+        }
         if (selecionado === "coletados") {
-            fetchColetados(); // Chama a função sempre que o produto selecionado muda
+            fetchColetados();
         } else {
             return
         }
-    }, [produtoSelecionado]);
+    }, [selecionado]);
 
     const handleReloadListas = () => {
         setSelecionado("coletados");
@@ -341,13 +348,36 @@ export default function Coleta({ navigation }) {
         setProdutoSelecionado({ idPackinglist: null, idProduto: null, seq: null });
     };
 
+    const moverBarra = (posicao) => {
+        Animated.timing(animacao, {
+            toValue: posicao,
+            duration: 300,
+            useNativeDriver: false,
+        }).start();
+    };
+
+    useEffect(() => {
+        if (selecionado === 'coletados') {
+            moverBarra(0);
+        } else {
+            moverBarra(1);
+        }
+    }, [selecionado]);
+
+    // Interpolação da posição da barra
+    const posicaoBarra = animacao.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0%', '50%'],
+    });
+
+
     return (
         <View style={styles.containerConferencia}>
             <View style={styles.containerCameraConferencia}>
-                <BarCodeScanner
+                {/* <BarCodeScanner
                     onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
                     style={styles.cameraConferencia}
-                />
+                /> */}
             </View>
 
             <View style={{ width: '90%' }}>
@@ -398,36 +428,33 @@ export default function Coleta({ navigation }) {
                 </Text>
             </View>
 
-
-
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
 
                 <View style={styles.containerToutchable}>
                     <View style={styles.containerBotaoRecarregar}>
                         <View style={selecionado === 'coletados' || selecionado === 'naoColetados' ? styles.botoesContainer : styles.botoesContainerNenhumSelecionado}>
-                            <TouchableOpacity
+                            <Animated.View
                                 style={[
-                                    styles.botoes,
-                                    selecionado === 'coletados' ? styles.botaoSelecionado : selecionado === 'naoColetados' ? styles.botaoEsquerdoNaoSelecionado : styles.botaoNenhumSelecionado,
-                                    { borderRadius: 25 }
+                                    styles.barraFundo,
+                                    { left: posicaoBarra },
                                 ]}
+                            />
+
+                            <TouchableOpacity
+                                style={styles.botao}
                                 onPress={() => {
-                                    setSelecionado('coletados');
-                                    fetchColetados();
+                                    setSelecionado('coletados') &&
+                                    fetchColetados()
                                 }}
                             >
                                 <Text style={styles.textoBotao}>Coletados</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[
-                                    styles.botoes,
-                                    selecionado === 'naoColetados' ? styles.botaoSelecionado : selecionado === 'coletados' ? styles.botaoDireitoNaoSelecionado : styles.botaoNenhumSelecionado,
-                                    { borderRadius: 25 }
-                                ]}
+                                style={styles.botao}
                                 onPress={() => {
-                                    setSelecionado('naoColetados');
-                                    fetchVolumesNaoColetados();
+                                    setSelecionado('naoColetados') &&
+                                    fetchVolumesNaoColetados()
                                 }}
                             >
                                 <Text style={styles.textoBotao}>Não coletados</Text>
@@ -439,7 +466,6 @@ export default function Coleta({ navigation }) {
                             <Icon name="reload1" size={30} color="#000" />
                         </TouchableOpacity>
                     </View>
-
 
                     <View style={styles.table}>
                         <View style={styles.header}>
@@ -572,24 +598,6 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'lightgray',
     },
-    botaoSelecionado: {
-        backgroundColor: '#66AA58',
-        borderColor: '#66AA58',
-    },
-    botaoEsquerdoNaoSelecionado: {
-        backgroundColor: '#9CD591',
-        borderColor: '#9CD591',
-        paddingRight: 0
-    },
-    botaoDireitoNaoSelecionado: {
-        backgroundColor: '#9CD591',
-        borderColor: '#9CD591',
-        paddingLeft: 0
-    },
-    botaoNenhumSelecionado: {
-        backgroundColor: '#66AA58',
-        borderColor: '#66AA58',
-    },
     textoBotao: {
         color: 'white',
         fontWeight: 'bold',
@@ -603,6 +611,19 @@ const styles = StyleSheet.create({
     },
     textoProdutoColetado: {
         padding: 5,
+    },
+    barraFundo: {
+        position: 'absolute',
+        width: '50%', // Metade da largura do contêiner
+        height: '100%',
+        backgroundColor: '#66AA58',
+        borderRadius: 25,
+    },
+    botao: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: 10,
+        alignItems: 'center',
     },
 
 });

@@ -60,7 +60,7 @@ export const fetchItensColetadosDeUmProduto = async (idPackinglist, idProduto, s
 export const fetchColetasMaisRecentes = async () => {
     const db = await getDBConnection();
     try {
-        const allRows = await db.getAllAsync(`
+        const response = await db.getAllAsync(`
         SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
         FROM mv_coleta c
         LEFT JOIN mv_volume v
@@ -69,8 +69,10 @@ export const fetchColetasMaisRecentes = async () => {
         ON c.idVolume = vv.idVolume
         ORDER BY dataHoraColeta DESC
         `);
-        return allRows;
-    } catch (error) {
+
+        return response
+
+        } catch (error) {
         console.error("Erro ao buscar coletas:", error);
         throw error;
     }

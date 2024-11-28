@@ -59,11 +59,10 @@ export const deletarTodasPackinglistsImportadas = async () => {
     }
 }
 
-export const deletarPackinglistPorId = async (id) => {
+export const deletarPackinglistPorId = async (idPackinglist) => {
     const db = await getDBConnection();
     try {
-        await db.runAsync('DELETE FROM mv_packinglist WHERE idPackinglist = ?', [id]);
-        Alert.alert('Packinglist removido com sucesso');
+        await db.runAsync('DELETE FROM mv_packinglist WHERE idPackinglist = ?', [idPackinglist]);
     } catch (error) {
         console.error("Erro ao remover packing list por ID:", error);
         throw error;

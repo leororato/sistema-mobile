@@ -84,11 +84,9 @@ export const deletarVolumeProdutoPorId = async (idVolumeProduto, idPackinglist, 
 export const deletarVolumeProdutoPorIdPackinglist = async (idPackinglist) => {
     const db = await getDBConnection();
     try {
-        await db.runAsync(`DELETE FROM mv_volumes_produto vp AND mv_volumes 
-            LEFT JOIN mv_volumes v
-            ON vp.idVolume = v.idVolume
-            WHERE vp.idPackinglist = ?`, [idPackinglist]);
-        Alert.alert('VolumeProduto removido com sucesso');
+        await db.runAsync(`
+            DELETE FROM mv_volumes_produto 
+            WHERE idPackinglist = ?`, [idPackinglist]);
     } catch (error) {
         console.error("Erro ao remover volumeProduto por ID:", error);
         throw error;

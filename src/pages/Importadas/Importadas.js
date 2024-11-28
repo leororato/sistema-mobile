@@ -3,10 +3,10 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
-import { deletarTodasPackinglistsImportadas, fetchPackingLists } from "../../database/services/packingListService.js";
-import { deletarPackinglistPorId, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
-import { deletarTodosVolumesProdutosImportados, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
-import { deletarTodosVolumesImportados, fetchVolumes } from "../../database/services/volumeService.js";
+import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPackingLists } from "../../database/services/packingListService.js";
+import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
+import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
+import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes } from "../../database/services/volumeService.js";
 import { deletarTodasColetas } from "../../database/services/coletaService.js";
 
 export default function Importadas({ navigation }) {
@@ -65,9 +65,14 @@ export default function Importadas({ navigation }) {
 
     const deletarItensPackinglist = async (idPackinglist) => {
         
+        await deletarVolumesPorIdPackinglist(idPackinglist);
+        await deletarVolumeProdutoPorIdPackinglist(idPackinglist);
+        await deletarPackinglistProdutoPorIdPackinglist(idPackinglist);
         await deletarPackinglistPorId(idPackinglist);
         
         await buscarPackinglistsImportadas();
+
+        Alert.alert('Packinglist removida.');
     }
 
     const handleMenuColetar = async () => {

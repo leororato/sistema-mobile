@@ -64,11 +64,20 @@ export const deletarTodasPackinglistProdutosImportadas = async () => {
     }
 }
 
-export const deletarPackinglistPorId = async (idPackinglist, idProduto, seq) => {
+export const deletarPackinglistProdutoPorId = async (idPackinglist, idProduto, seq) => {
     const db = await getDBConnection();
     try {
         await db.runAsync('DELETE FROM mv_packinglist_produto WHERE idPackinglist = ? AND idProduto = ? AND seq =  ?', [idPackinglist, idProduto, seq]);
-        Alert.alert('Packinglist removido com sucesso');
+    } catch (error) {
+        console.error("Erro ao remover packing list por ID:", error);
+        throw error;
+    }
+}
+
+export const deletarPackinglistProdutoPorIdPackinglist = async (idPackinglist) => {
+    const db = await getDBConnection();
+    try {
+        await db.runAsync('DELETE FROM mv_packinglist_produto WHERE idPackinglist = ?', [idPackinglist]);
     } catch (error) {
         console.error("Erro ao remover packing list por ID:", error);
         throw error;

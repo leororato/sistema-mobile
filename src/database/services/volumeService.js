@@ -79,3 +79,19 @@ export const deletarVolumesPorId = async (idVolume) => {
         throw error;
     }
 }
+
+export const deletarVolumesPorIdPackinglist = async (idPackinglist) => {
+    const db = await getDBConnection();
+    try {
+        await db.runAsync(`DELETE FROM mv_volume
+            WHERE idVolume IN(
+            SELECT idVolume 
+            FROM mv_volumes_produto 
+            WHERE idPackinglist = ?
+            ); `, [idPackinglist]);
+    } catch (error) {
+        console.error("Erro ao remover volume por ID:", error);
+        throw error;
+    }
+}
+
