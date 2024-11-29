@@ -37,10 +37,22 @@ export const fetchPackingLists = async () => {
     }
 };
 
-export const fetchPackingListPorId = async (id) => {
+export const fetchPackingListsQuantidade = async () => {
     const db = await getDBConnection();
     try {
-        const allRows = await db.getFirstAsync('SELECT * FROM mv_packinglist WHERE idPackinglist = ?', [id]);
+        const response = await db.getAllAsync('SELECT * FROM mv_packinglist');
+
+        return response.length;
+    } catch (error) {
+        console.error("Erro ao buscar packing lists:", error);
+        throw error;
+    }
+};
+
+export const fetchPackingListPorId = async (idPackinglist) => {
+    const db = await getDBConnection();
+    try {
+        const allRows = await db.getFirstAsync('SELECT * FROM mv_packinglist WHERE idPackinglist = ?', [idPackinglist]);
         return allRows;
     } catch (error) {
         console.error("Erro ao buscar packing list por ID:", error);

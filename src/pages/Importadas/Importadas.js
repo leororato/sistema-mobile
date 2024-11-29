@@ -1,9 +1,9 @@
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Button, Alert } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Button, Alert, RefreshControl, Image, Dimensions } from "react-native";
 import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
-import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPackingLists } from "../../database/services/packingListService.js";
+import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPackingLists, fetchPackingListsQuantidade } from "../../database/services/packingListService.js";
 import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
 import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes } from "../../database/services/volumeService.js";
@@ -12,9 +12,10 @@ import { deletarTodasColetas } from "../../database/services/coletaService.js";
 export default function Importadas({ navigation }) {
 
     const [packinglistsExistentes, setPackinglistsExistentes] = useState([]);
-    const [contextMenuVisible, setContextMenuVisible] = useState(false);
-    const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
-    const [selectedItem, setSelectedItem] = useState(null);
+
+    const [refreshing, setRefreshing] = useState(false);
+    const { height } = Dimensions.get('window');
+
 
 
     useEffect(() => {
@@ -23,40 +24,20 @@ export default function Importadas({ navigation }) {
 
     const buscarPackinglistsImportadas = async () => {
         const packinglist = await fetchPackingLists();
-        const packinglistProduto = await fetchPackingListProdutos();
-        const volumeProduto = await fetchVolumesProdutos();
-        const volumes = await fetchVolumes();
-
+        console.log('packingList: ', packinglist)
         await setPackinglistsExistentes(packinglist);
 
     }
 
-
-    const renderPackingListItem = ({ item, index }) => {
-        const isLastItem = index === packinglistsExistentes.length - 1;
-
-        return (
-            <TouchableOpacity onPressIn={(e) => handlePressIn(e, item)}>
-                <View style={[style.row, isLastItem && style.lastRow]}>
-                    <Text style={style.cell}>{item.idPackinglist}</Text>
-                    <Text style={style.cell}>{item.nomeImportador}</Text>
-                    <Text style={style.cell}>{item.numeroColetas ? item.numeroColetas : "0"}</Text>
-                </View>
-            </TouchableOpacity>
-        );
-    };
-
-
-    const handleExcluirPlImportada = async () => {
-        setContextMenuVisible(false);
-        let id = selectedItem;
+    const handleExcluirPlImportada = async (idPackinglist) => {
 
         Alert.alert(
             'Excluir importação',
-            `Tem certeza que deseja excluir a PackingList ${selectedItem}?`,
+            `Tem certeza que deseja excluir a PackingList ${idPackinglist}?`,
             [
-                { text: 'Sim', onPress: () => deletarItensPackinglist(id)
-            },
+                {
+                    text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
+                },
                 { text: 'Não', onPress: () => { }, style: 'cancel' },
             ],
             { cancelable: false }
@@ -64,64 +45,19 @@ export default function Importadas({ navigation }) {
     }
 
     const deletarItensPackinglist = async (idPackinglist) => {
-        
+
         await deletarVolumesPorIdPackinglist(idPackinglist);
         await deletarVolumeProdutoPorIdPackinglist(idPackinglist);
         await deletarPackinglistProdutoPorIdPackinglist(idPackinglist);
         await deletarPackinglistPorId(idPackinglist);
-        
+
         await buscarPackinglistsImportadas();
 
         Alert.alert('Packinglist removida.');
     }
 
-    const handleMenuColetar = async () => {
-        setContextMenuVisible(false);
-
-        Alert.alert(
-            'Coletar Packinglist',
-            `Deseja coletar a PackingList ${selectedItem}?`,
-            [
-                { text: 'Sim', onPress: () => navigation.navigate('Coleta', { idPackinglist: selectedItem })
-            },
-                { text: 'Não', onPress: () => { }, style: 'cancel' },
-            ],
-            { cancelable: false }
-        );
-    }
-
-    const renderContextMenu = () => {
-        if (!contextMenuVisible) return null;
-        return (
-            <View style={[style.contextMenu, { top: contextMenuPosition.y, left: contextMenuPosition.x }]}>
-                <TouchableOpacity onPress={handleMenuColetar} style={style.botaoMenuColetar}>
-                    <Text>Exportar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleExcluirPlImportada} style={style.botaoMenuColetar}>
-                    <Text>Excluir</Text>
-                </TouchableOpacity>
-            </View>
-        );
-    };
-
-    const handlePressIn = (e, item) => {
-        const { pageX, pageY } = e.nativeEvent;
-
-        let adjustedX = pageX + 0;
-        let adjustedY = pageY - 80;
-
-        if (adjustedX > 250) {
-            adjustedX = 250;
-        }
-
-        let idPackinglist = item.idPackinglist;
-        setContextMenuPosition({ x: adjustedX, y: adjustedY });
-        setContextMenuVisible(true);
-        setSelectedItem(idPackinglist);
-    };
-
     const limparTodasImportadas = async () => {
-        
+
         try {
             setContextMenuVisible(false);
             await deletarTodasColetas();
@@ -135,140 +71,133 @@ export default function Importadas({ navigation }) {
             console.error('Erro ao limpar packinglists importadas: ', error);
             alert('Erro ao limpar packinglists importadas');
         }
-        
+
     }
 
-    return (
-        <TouchableWithoutFeedback onPress={() => setContextMenuVisible(false)} style={style.containerImportados}>
-            <View style={style.containerInicio}>
-                <View style={style.containerBotaoRecarregar}>
-                    <TouchableOpacity style={style.botaoLimparTodasPl}>
-                        <Button
-                            title="Limpar todos"
-                            color={"black"}
-                            onPress={() => limparTodasImportadas()}
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={buscarPackinglistsImportadas}>
-                        <Icon name="reload1" size={30} color="#000" />
-                    </TouchableOpacity>
-                </View>
+    const renderPackingListItem = ({ item, index }) => {
+        const isLastItem = index === packinglistsExistentes.length - 1;
 
-                <View style={style.table}>
-                    <View style={style.header}>
-                        <Text style={style.headerCell}>ID</Text>
-                        <Text style={style.headerCell}>Importador</Text>
-                        <Text style={style.headerCell}>N° Coletas</Text>
+        return (
+            <View style={style.containerRow}>
+                <View style={style.containerListaPackinglist}>
+                    <View style={[style.row, isLastItem && style.lastRow]}>
+                        <View style={style.cell}>
+                            <Text style={{ fontWeight: 'bold' }}>ID: {item.idPackinglist}</Text>
+                        </View>
+                        <View style={style.cell}>
+                            <Text style={{ fontWeight: 'bold' }}>Cliente: {item.nomeImportador}</Text>
+                        </View>
                     </View>
-                    <FlatList
-                        data={packinglistsExistentes}
-                        renderItem={renderPackingListItem}
-                        keyExtractor={item => item.idPackinglist.toString()}
-                    />
+
+                    <View style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                        <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
+                            onPress={() => { handleExcluirPlImportada(item.idPackinglist) }}
+                        >
+                            <Text><Icon name="export" size={20} color="#000" />  Exportar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
+                            onPress={() => { handleExcluirPlImportada(item.idPackinglist) }}
+                        >
+                            <Text><Icon name="delete" size={20} color="#000" />  Excluir</Text>
+                        </TouchableOpacity>
+                    </View>
+
                 </View>
-
-                {renderContextMenu()}
-
-                <BarraFooter navigation={navigation} />
             </View>
-        </TouchableWithoutFeedback>
+        );
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await buscarPackinglistsImportadas();
+        setRefreshing(false);
+    };
+
+
+
+    return (
+        <View style={{ flex: 1, backgroundColor: '#e4ffee' }}>
+
+            <View
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: height / 2,
+                    backgroundColor: '#1780e2',
+                    borderBottomLeftRadius: 50,
+                    borderBottomRightRadius: 50,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 4,
+                }}
+            />
+
+            <FlatList
+                data={packinglistsExistentes}
+                keyExtractor={(item) => item.idPackinglist.toString()}
+                renderItem={renderPackingListItem}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#000']}
+                    />
+                }
+                contentContainerStyle={{ flexGrow: 1 }}
+                style={{marginTop: 100}}
+            />
+
+            <BarraFooter navigation={navigation} />
+        </View>
     );
+
 }
 
 const style = StyleSheet.create({
-    containerImportados: {
+    containerRow: {
         display: 'flex',
         alignItems: 'center',
+        marginTop: 50,
+        width: '100%'
     },
-    containerInicio: {
-        flex: 1,
-        marginTop: 40,
-        alignItems: 'center',
-        backgroundColor: '#F5F5F5',
-        width: '100%',
-        height: '100%',
-    },
-    containerBotaoRecarregar: {
-        width: '100%',
-        display: 'flex', 
-        flexDirection: 'row',
-        justifyContent: 'space-around',        
-        alignItems: 'flex-end',
-        paddingRight: 20,
-        paddingBottom: 10,
-    },
-    botaoLimparTodasPl: {
-        backgroundColor: "#ccc"
-    },  
-    botaoMenuColetar: {
-        backgroundColor: '#ccc',
-        color: '#000',
-        borderRadius: 3,
-        padding: 6,
-        marginBottom: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    botaoMenuConferir: {
-        backgroundColor: '#ccc',
-        color: '#000',
-        borderRadius: 3,
-        padding: 6,
-        marginBottom: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    botaoMenuConsultar: {
-        backgroundColor: '#ccc',
-        color: '#000',
-        borderRadius: 3,
-        padding: 6,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    table: {
-        width: '100%',
-        marginBottom: 20,
-        borderColor: '#ccc',
-        borderWidth: '1px'
-    },
-    header: {
+    containerListaPackinglist: {
+        padding: 20,
+        backgroundColor: '#edeccf',
         display: 'flex',
-        justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'row',
-        backgroundColor: '#ddd',
-        padding: 10,
+        width: '80%',
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
-    headerCell: {
-        flex: 1,
-        fontWeight: 'bold',
-        textAlign: 'center',
+    containerLinhaRow: {
+        display: 'flex',
+        flexDirection: 'row'
     },
     row: {
-        display: 'flex',
-        alignItems: 'center',
-        flexDirection: 'row',
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
+        flexDirection: 'column',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        gap: 10,
+        width: '60%',
     },
     lastRow: {
-        borderBottomWidth: 0,
+
     },
     cell: {
         flex: 1,
         textAlign: 'center',
+        textAlignVertical: 'center',
+        color: '#333',
+        fontSize: 14,
     },
-    contextMenu: {
-        position: 'absolute',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        padding: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.8,
-        shadowRadius: 2,
-        elevation: 5,
-    },
+
 });
+
+

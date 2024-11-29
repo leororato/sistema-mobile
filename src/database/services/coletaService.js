@@ -50,6 +50,7 @@ export const fetchItensColetadosDeUmProduto = async (idPackinglist, idProduto, s
         ON c.idVolume = vv.idVolume
         WHERE c.idPackinglist = ? AND c.idProduto = ? AND c.seq = ? 
         ORDER BY dataHoraColeta DESC`, [idPackinglist, idProduto, seq]);
+
         return resposne;
     } catch (error) {
         console.error("Erro ao buscar coletas:", error);
@@ -70,7 +71,7 @@ export const fetchColetasMaisRecentes = async () => {
         ORDER BY dataHoraColeta DESC
         `);
 
-        return response
+        return response;
 
         } catch (error) {
         console.error("Erro ao buscar coletas:", error);
@@ -81,7 +82,7 @@ export const fetchColetasMaisRecentes = async () => {
 export const fetchNaoColetados = async () => {
     const db = await getDBConnection();
     try {
-        const allRows = await db.getAllAsync(`SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao
+        const response = await db.getAllAsync(`SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao
             FROM mv_volumes_produto vv
             LEFT JOIN mv_coleta c
                 ON vv.idPackinglist = c.idPackinglist
@@ -93,8 +94,7 @@ export const fetchNaoColetados = async () => {
             ON vv.idVolume = v.idVolume
             WHERE c.idColeta IS NULL;
         `);
-
-        return allRows;
+        return response;
     } catch (error) {
         console.error("Erro ao buscar coletas:", error);
         throw error;

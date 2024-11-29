@@ -1,10 +1,9 @@
-import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View, Alert, Dimensions, TouchableWithoutFeedback } from "react-native";
+import { Button, FlatList, StyleSheet, Text, TouchableOpacity, View, Alert, Dimensions, TouchableWithoutFeedback, ScrollView, RefreshControl, Image } from "react-native";
 import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import api from "../../../axiosConfig";
 import Icon from 'react-native-vector-icons/AntDesign';
-import { fetchPackingListPorId, fetchPackingLists, insertPackingList } from "../../database/services/packingListService.js";
-import { excluirDatabase } from "../../database/database.js";
+import { fetchPackingListPorId, fetchPackingListsQuantidade, insertPackingList } from "../../database/services/packingListService.js";
 import { insertPackingListProduto } from "../../database/services/packingListProdutoService.js";
 import { insertVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { insertVolume } from "../../database/services/volumeService.js";
@@ -13,14 +12,22 @@ import internetStatus from "../../components/VerificarConexaoComInternet/Interne
 export default function Inicio({ navigation }) {
 
     const [packinglistsExistentes, setPackinglistsExistentes] = useState([]);
-    const [contextMenuVisible, setContextMenuVisible] = useState(false);
-    const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
-    const [selectedItem, setSelectedItem] = useState(null);
+    const [refreshing, setRefreshing] = useState(false);
 
+    const { height } = Dimensions.get('window');
 
 
     useEffect(() => {
-        fetchPackinglistsInicio();
+        const navegacaoParaInicioOuImportacao = async () => {
+            const response = await fetchPackingListsQuantidade();
+            if (response === 0) {
+                fetchPackinglistsInicio();
+            } else {
+                navigation.navigate('Importadas');
+            }
+        }
+
+        navegacaoParaInicioOuImportacao();
     }, []);
 
     const fetchPackinglistsInicio = async () => {
@@ -45,319 +52,237 @@ export default function Inicio({ navigation }) {
         }
     };
 
-    const handlePressIn = (e, item) => {
-        const { pageX, pageY } = e.nativeEvent;
-
-        let adjustedX = pageX + 0;
-        let adjustedY = pageY - 80;
-
-        if (adjustedX > 250) {
-            adjustedX = 250;
-        }
-
-        let idPackinglist = item.idPackinglist;
-        setContextMenuPosition({ x: adjustedX, y: adjustedY });
-        setContextMenuVisible(true);
-        setSelectedItem(idPackinglist);
-    };
-
-    const handleMenuColetar = async () => {
-        setContextMenuVisible(false);
-
-        const packingList = await fetchPackingListPorId(selectedItem);
-        if (packingList) {
-
-            navigation.navigate('Coleta', { idPackinglist: selectedItem });
-
-        } else {
-            Alert.alert(
-                'Importar Packinglist',
-                'Esta packinglist não foi importada. Deseja importá-la?',
-                [
-                    { text: 'Sim', onPress: () => handleImportarPackinglist() },
-                    { text: 'Não', onPress: () => { }, style: 'cancel' },
-                ],
-                { cancelable: false }
-            );
-        }
-    }
-
-    const importar = async () => {
-        const idPackinglist = selectedItem;
+    const importar = async (idPackinglist) => {
+        console.log('id packinglist: ', idPackinglist)
         const statusInternet = internetStatus();
         try {
 
             if (statusInternet) {
 
-            const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
-            const packingList = response.data.packingListImportacaoMobile;
-            const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
-            const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
-            const volumeArray = response.data.volumeImportacaoMobile;
+                const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+                const packingList = response.data.packingListImportacaoMobile;
+                const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
+                const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
+                const volumeArray = response.data.volumeImportacaoMobile;
 
-            // Salvar PackingList principal
-            const packingListImportar = {
-                idPackinglist: packingList.idPackinglist,
-                nomeImportador: packingList.nomeImportador,
-                pesoLiquidoTotal: packingList.pesoLiquidoTotal,
-                pesoBrutoTotal: packingList.pesoBrutoTotal,
-                numeroColetas: packingList.numeroColetas
-            };
+                // Salvar PackingList principal
+                const packingListImportar = {
+                    idPackinglist: packingList.idPackinglist,
+                    nomeImportador: packingList.nomeImportador,
+                    pesoLiquidoTotal: packingList.pesoLiquidoTotal,
+                    pesoBrutoTotal: packingList.pesoBrutoTotal,
+                    numeroColetas: packingList.numeroColetas
+                };
 
-            await insertPackingList(packingListImportar);
+                await insertPackingList(packingListImportar);
 
-            // Salvar PackingListProduto
-            await Promise.all(
-                packingListProdutoArray.map(async (packingListProduto) => {
-                    const packingListProdutoImportar = {
-                        idPackinglist: packingListProduto.idPackinglist,
-                        idProduto: packingListProduto.idProduto,
-                        seq: packingListProduto.seq,
-                        produto: packingListProduto.produto,
-                        descricaoProduto: packingListProduto.descricaoProduto,
-                        ordemProducao: packingListProduto.ordemProducao,
-                        totalPesoLiquido: packingListProduto.totalPesoLiquido,
-                        totalPesoBruto: packingListProduto.totalPesoBruto,
-                        numeroSerie: packingListProduto.numeroSerie,
-                    };
-                    await insertPackingListProduto(packingListProdutoImportar);
-                })
-            );
+                // Salvar PackingListProduto
+                await Promise.all(
+                    packingListProdutoArray.map(async (packingListProduto) => {
+                        const packingListProdutoImportar = {
+                            idPackinglist: packingListProduto.idPackinglist,
+                            idProduto: packingListProduto.idProduto,
+                            seq: packingListProduto.seq,
+                            produto: packingListProduto.produto,
+                            descricaoProduto: packingListProduto.descricaoProduto,
+                            ordemProducao: packingListProduto.ordemProducao,
+                            totalPesoLiquido: packingListProduto.totalPesoLiquido,
+                            totalPesoBruto: packingListProduto.totalPesoBruto,
+                            numeroSerie: packingListProduto.numeroSerie,
+                        };
+                        await insertPackingListProduto(packingListProdutoImportar);
+                    })
+                );
 
-            // Salvar VolumeProduto
-            await Promise.all(
-                volumeProdutoArray.map(async (volumeProduto) => {
-                    const volumeProdutoImportar = {
-                        idVolumeProduto: volumeProduto.idVolumeProduto,
-                        idPackinglist: volumeProduto.idPackinglist,
-                        idProduto: volumeProduto.idProduto,
-                        seq: volumeProduto.seq,
-                        idVolume: volumeProduto.idVolume,
-                        qrCodeVolumeProduto: volumeProduto.qrCodeVolumeProduto,
-                        seqVolume: volumeProduto.seqVolume,
-                    };
-                    await insertVolumesProdutos(volumeProdutoImportar);
-                })
-            );
+                // Salvar VolumeProduto
+                await Promise.all(
+                    volumeProdutoArray.map(async (volumeProduto) => {
+                        const volumeProdutoImportar = {
+                            idVolumeProduto: volumeProduto.idVolumeProduto,
+                            idPackinglist: volumeProduto.idPackinglist,
+                            idProduto: volumeProduto.idProduto,
+                            seq: volumeProduto.seq,
+                            idVolume: volumeProduto.idVolume,
+                            qrCodeVolumeProduto: volumeProduto.qrCodeVolumeProduto,
+                            seqVolume: volumeProduto.seqVolume,
+                        };
+                        await insertVolumesProdutos(volumeProdutoImportar);
+                    })
+                );
 
-            // Salvar Volumes
-            await Promise.all(
-                volumeArray.map(async (volume) => {
-                    const volumeImportar = {
-                        idVolume: volume.idVolume,
-                        idTipoVolumeId: volume.idTipoVolumeId,
-                        quantidadeItens: volume.quantidadeItens,
-                        descricao: volume.descricao,
-                        pesoLiquido: volume.pesoLiquido,
-                        pesoBruto: volume.pesoBruto,
-                    };
-                    await insertVolume(volumeImportar);
-                })
-            );
+                // Salvar Volumes
+                await Promise.all(
+                    volumeArray.map(async (volume) => {
+                        const volumeImportar = {
+                            idVolume: volume.idVolume,
+                            idTipoVolumeId: volume.idTipoVolumeId,
+                            quantidadeItens: volume.quantidadeItens,
+                            descricao: volume.descricao,
+                            pesoLiquido: volume.pesoLiquido,
+                            pesoBruto: volume.pesoBruto,
+                        };
+                        await insertVolume(volumeImportar);
+                    })
+                );
 
-            Alert.alert("PackingList importada com sucesso!");
-        } else {
-            Alert.alert(
-                'Atenção',
-                'Não há conexão com a internet. Não foi possível importar a packinglist.',
-                [
-                    { text: 'OK', onPress: () => { }, style: 'cancel' },
-                ],
-            );
-        }
+                Alert.alert(
+                    "Importação completa",
+                    'Packinglist importada com sucesso!',
+                    [
+                        { text: 'OK', onPress: () => { navigation.navigate("Importadas") }, style: 'cancel' },
+                    ],
+                );
+                navigation.navigate('Importadas')
+            } else {
+                Alert.alert(
+                    'Atenção',
+                    'Não há conexão com a internet. Não foi possível importar a packinglist.',
+                    [
+                        { text: 'OK', onPress: () => { }, style: 'cancel' },
+                    ],
+                );
+            }
 
         } catch (error) {
             console.log('Erro ao buscar PackingList: ', error);
         }
     }
 
-    const handleImportarPackinglist = async () => {
-        setContextMenuVisible(false);
-    
-        const packinglist = await fetchPackingListPorId(selectedItem);
-    
+    const handleImportarPackinglist = async (idPackinglist) => {
+        console.log('packinglist id:' , idPackinglist)
+        const packinglist = await fetchPackingListPorId(idPackinglist);
+
         if (!packinglist) {
-            importar();
+            importar(idPackinglist);
         } else {
             Alert.alert(
                 'Importar Packinglist',
                 'Esta packinglist já foi importado, deseja atualizá-lo?',
                 [
-                    { text: 'Sim', onPress: () => importar() },
+                    { text: 'Sim', onPress: () => importar(idPackinglist) },
                     { text: 'Não', onPress: () => { }, style: 'cancel' },
                 ],
                 { cancelable: false }
-            );        
+            );
         }
-    };
-    
-
-
-    const renderContextMenu = () => {
-        if (!contextMenuVisible) return null;
-        return (
-            <View style={[style.contextMenu, { top: contextMenuPosition.y, left: contextMenuPosition.x }]}>
-                <TouchableOpacity onPress={handleMenuColetar} style={style.botaoMenuColetar}>
-                    <Text>Coletar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleImportarPackinglist} style={style.botaoMenuConferir}>
-                    <Text>Importar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => setContextMenuVisible(false)} style={style.botaoMenuConsultar}>
-                    <Text>Consultar</Text>
-                </TouchableOpacity>
-            </View>
-        );
     };
 
     const renderPackingListItem = ({ item, index }) => {
         const isLastItem = index === packinglistsExistentes.length - 1;
 
         return (
-            <TouchableOpacity onPressIn={(e) => handlePressIn(e, item)}>
-                <View style={[style.row, isLastItem && style.lastRow]}>
-                    <Text style={style.cell}>{item.idPackinglist}</Text>
-                    <Text style={style.cell}>{item.nomeClienteImportador}</Text>
-                    <Text style={style.cell}>{item.numeroColetas ? item.numeroColetas : "0"}</Text>
+            <View style={style.containerRow}>
+                <View style={style.containerListaPackinglist}>
+                    <View style={[style.row, isLastItem && style.lastRow]}>
+                        <View style={style.cell}>
+                            <Text style={{ fontWeight: 'bold' }}>ID: {item.idPackinglist}</Text>
+                        </View>
+                        <View style={style.cell}>
+                            <Text style={{ fontWeight: 'bold' }}>Cliente: {item.nomeClienteImportador}</Text>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
+                        onPress={() => { handleImportarPackinglist(item.idPackinglist) }}
+                    >
+                        <Text><Icon name="download" size={24} color="#000" />  Importar</Text>
+                    </TouchableOpacity>
+
                 </View>
-            </TouchableOpacity>
+            </View>
         );
     };
 
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await fetchPackinglistsInicio();
+        setRefreshing(false);
+    };
+
+
 
     return (
-        <TouchableWithoutFeedback onPress={() => setContextMenuVisible(false)}>
-            <View style={style.containerInicio}>
-                <View style={style.containerBotaoRecarregar}>
-                    <TouchableOpacity style={style.botaoImportadas}>
-                        <Button
-                            title="Importadas"
-                            color={"black"}
-                            onPress={() => navigation.navigate('Importadas')}
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={style.reloadPackinglist} onPress={fetchPackinglistsInicio}>
-                        <Icon name="reload1" size={30} color="#000" />
-                    </TouchableOpacity>
-                </View>
+        <View style={{ flex: 1, backgroundColor: '#e4ffee' }}>
 
-                <View style={style.table}>
-                    <View style={style.header}>
-                        <Text style={style.headerCell}>ID</Text>
-                        <Text style={style.headerCell}>Importador</Text>
-                        <Text style={style.headerCell}>N° Coleta</Text>
-                    </View>
-                    <FlatList
-                        data={packinglistsExistentes}
-                        renderItem={renderPackingListItem}
-                        keyExtractor={item => item.idPackinglist.toString()}
+            <View
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: height / 2,
+                    backgroundColor: '#1780e2',
+                    borderBottomLeftRadius: 50,
+                    borderBottomRightRadius: 50,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 4,
+                }}
+            />
+
+            <FlatList
+                data={packinglistsExistentes}
+                keyExtractor={(item) => item.idPackinglist.toString()}
+                renderItem={renderPackingListItem}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={['#000']}
                     />
-                </View>
+                }
+                contentContainerStyle={{ flexGrow: 1 }}
+                style={{marginTop: 100}}
+            />
 
-                {renderContextMenu()}
-
-                <BarraFooter navigation={navigation} />
-            </View>
-        </TouchableWithoutFeedback>
+            <BarraFooter navigation={navigation} />
+        </View>
     );
+
 }
 
 const style = StyleSheet.create({
-    containerInicio: {
-        flex: 1,
-        justifyContent: 'flex-start',
-        alignItems: 'center',
-        paddingTop: 40,
-        backgroundColor: '#F5F5F5',
-        width: '100%',
-        height: '100%',
-    },
-    containerBotaoRecarregar: {
-        width: '100%',
+    containerRow: {
         display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-around',
-        paddingRight: 20,
-        paddingBottom: 10,
-        paddingLeft: 10,
-    },
-    botaoImportadas: {
-        backgroundColor: '#ccc',
-        borderRadius: '5px'
-    },
-    reloadPackinglist: {
-        padding: 5
-    },
-    botaoMenuColetar: {
-        backgroundColor: '#ccc',
-        color: '#000',
-        borderRadius: 3,
-        padding: 6,
-        marginBottom: 4,
-        justifyContent: 'center',
         alignItems: 'center',
+        marginTop: 50,
+        width: '100%',
     },
-    botaoMenuConferir: {
-        backgroundColor: '#ccc',
-        color: '#000',
-        borderRadius: 3,
-        padding: 6,
-        marginBottom: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    botaoMenuConsultar: {
-        backgroundColor: '#ccc',
-        color: '#000',
-        borderRadius: 3,
-        padding: 6,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    table: {
-        width: '90%',
-        marginBottom: 20,
-        borderColor: '#ccc',
-        borderWidth: '1px'
-    },
-    header: {
+    containerListaPackinglist: {
+        padding: 20,
+        backgroundColor: '#edeccf',
         display: 'flex',
-        justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'row',
-        backgroundColor: '#ddd',
-        padding: 10,
+        width: '80%',
+        borderRadius: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
     },
-    headerCell: {
-        flex: 1,
-        fontWeight: 'bold',
-        textAlign: 'center',
+    containerLinhaRow: {
+        display: 'flex',
+        flexDirection: 'row'
     },
     row: {
-        display: 'flex',
-        alignItems: 'center',
-        flexDirection: 'row',
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#ccc',
+        flexDirection: 'column',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        gap: 10,
+        width: '60%',
     },
     lastRow: {
-        borderBottomWidth: 0,
+
     },
     cell: {
         flex: 1,
         textAlign: 'center',
+        textAlignVertical: 'center',
+        color: '#333',
+        fontSize: 14,
     },
-    contextMenu: {
-        position: 'absolute',
-        backgroundColor: 'white',
-        borderRadius: 5,
-        padding: 10,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.8,
-        shadowRadius: 2,
-        elevation: 5,
-    },
+
 });
+

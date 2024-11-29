@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import api from '../../../axiosConfig';
 import * as SecureStore from 'expo-secure-store';
+import { fetchPackingListsQuantidade } from '../../database/services/packingListService';
 
 export default function Login({ navigation }) {
   const [login, setLogin] = useState('');
@@ -26,7 +27,18 @@ export default function Login({ navigation }) {
     }
   }
 
+  useEffect(() => {
+    navegacaoParaInicioOuImportacao();
+  }, [])
 
+  const navegacaoParaInicioOuImportacao = async () => {
+    const response = await fetchPackingListsQuantidade();
+    if (response === 0) {
+        navigation.navigate('Inicio');
+    } else {
+        navigation.navigate('Importadas');
+    }
+  }
 
   return (
     <View style={styles.container}>
