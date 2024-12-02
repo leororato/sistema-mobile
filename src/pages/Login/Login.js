@@ -3,6 +3,7 @@ import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } f
 import api from '../../../axiosConfig';
 import * as SecureStore from 'expo-secure-store';
 import { fetchPackingListsQuantidade } from '../../database/services/packingListService';
+import internetStatus from '../../components/VerificarConexaoComInternet/InternetStatus';
 
 export default function Login({ navigation }) {
   const [login, setLogin] = useState('');
@@ -12,15 +13,27 @@ export default function Login({ navigation }) {
   const handleLogin = async () => {
 
     try {
-      const response = await api.post('http://192.168.0.122:8080/auth/login', { login: login, senha: senha });
-      console.log('resp: ', response.data)
-      await SecureStore.setItemAsync('token', response.data.token);
-      await SecureStore.setItemAsync('id', JSON.stringify(response.data.id)); 
-      await SecureStore.setItemAsync('nivelAcesso', JSON.stringify(response.data.nivelAcesso)); 
-      await SecureStore.setItemAsync('nome', response.data.nome);
+      const statusInternet = internetStatus();
+      if (statusInternet) {
 
-      console.log('resp: ', response.data )
-      navigation.navigate('Inicio');
+        const response = await api.post('http://192.168.0.122:8080/auth/login', { login: login, senha: senha });
+        console.log('resp: ', response.data)
+        await SecureStore.setItemAsync('token', response.data.token);
+        await SecureStore.setItemAsync('id', JSON.stringify(response.data.id));
+        await SecureStore.setItemAsync('nivelAcesso', JSON.stringify(response.data.nivelAcesso));
+        await SecureStore.setItemAsync('nome', response.data.nome);
+
+        console.log('resp: ', response.data)
+        navigation.navigate('Inicio');
+      } else {
+        Alert.alert(
+          'Atenção',
+          'Não há conexão com a internet. Não foi possível fazer login.',
+          [
+            { text: 'OK', onPress: () => { }, style: 'cancel' },
+          ],
+        );
+      }
 
     } catch (error) {
       console.log("Erro no login: ", error);
@@ -34,9 +47,9 @@ export default function Login({ navigation }) {
   const navegacaoParaInicioOuImportacao = async () => {
     const response = await fetchPackingListsQuantidade();
     if (response === 0) {
-        navigation.navigate('Inicio');
+      navigation.navigate('Inicio');
     } else {
-        navigation.navigate('Importadas');
+      navigation.navigate('Importadas');
     }
   }
 
@@ -58,11 +71,11 @@ export default function Login({ navigation }) {
         onChangeText={setSenha}
       />
 
-      <ActivityIndicator 
-      size={24}
-      color={"#FFF"}
+      <ActivityIndicator
+        size={24}
+        color={"#FFF"}
       />
-      
+
       <Button title="Entrar" onPress={handleLogin} />
     </View>
   );

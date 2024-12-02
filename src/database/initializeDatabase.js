@@ -18,6 +18,6 @@ export default function initializeDatabase() {
         await createTable_mv_coleta();
     };
 
-    // excluirTabelas();
+     // excluirTabelas();
     initializeDB();
 }

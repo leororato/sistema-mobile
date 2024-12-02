@@ -7,7 +7,9 @@ import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPacki
 import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
 import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes } from "../../database/services/volumeService.js";
-import { deletarTodasColetas } from "../../database/services/coletaService.js";
+import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao } from "../../database/services/coletaService.js";
+import api from "../../../axiosConfig.js";
+import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
 
 export default function Importadas({ navigation }) {
 
@@ -24,10 +26,59 @@ export default function Importadas({ navigation }) {
 
     const buscarPackinglistsImportadas = async () => {
         const packinglist = await fetchPackingLists();
-        console.log('packingList: ', packinglist)
         await setPackinglistsExistentes(packinglist);
 
     }
+
+    const handleExportarColetas = () => {
+        Alert.alert(
+            "Deseja enviar a packinglist?",
+            '',
+            [
+                {
+                    text: 'Ok', onPress: () => exportarColetas()
+                },
+                {
+                    text: 'Cancelar', onPress: () => { }, style: 'cancel'
+                },
+            ]
+        );
+    };
+
+    const exportarColetas = async () => {
+        try {
+
+            const statusInternet = await internetStatus();
+            if (statusInternet) {
+                const coletasRealizadas = await fetchColetasParaExportacao();
+                await api.post("/coletas/exportar-coleta", coletasRealizadas);
+
+                Alert.alert(
+                    "Packinglist enviada com sucesso.",
+                    '',
+                    [{
+                        text: 'Ok', onPress: () => { }
+                    }]
+                );
+            } else {
+                Alert.alert(
+                    'Atenção',
+                    'Não há conexão com a internet. Não foi possível enviar as coletas do packinglist.',
+                    [
+                        { text: 'OK', onPress: () => { }, style: 'cancel' },
+                    ],
+                );
+            }
+
+        } catch (error) {
+            if (error.response && error.response.data) {
+                Alert.alert('Erro', error.response.data.message || 'Erro desconhecido ao exportar coletas.');
+            } else {
+                Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
+            }
+        }
+    };
+
 
     const handleExcluirPlImportada = async (idPackinglist) => {
 
@@ -91,7 +142,7 @@ export default function Importadas({ navigation }) {
 
                     <View style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
-                            onPress={() => { handleExcluirPlImportada(item.idPackinglist) }}
+                            onPress={() => { handleExportarColetas() }}
                         >
                             <Text><Icon name="export" size={20} color="#000" />  Exportar</Text>
                         </TouchableOpacity>
@@ -147,7 +198,7 @@ export default function Importadas({ navigation }) {
                     />
                 }
                 contentContainerStyle={{ flexGrow: 1 }}
-                style={{marginTop: 100}}
+                style={{ marginTop: 100 }}
             />
 
             <BarraFooter navigation={navigation} />

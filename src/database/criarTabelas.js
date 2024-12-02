@@ -15,7 +15,6 @@ export const excluirTodasTabelas = async () => {
     const db = await getDBConnection();
 
     try {
-        // Desabilitar restrições de chave estrangeira para permitir exclusões sem problemas
         await db.execAsync("PRAGMA foreign_keys = OFF");
 
         for (const tabela of tabelas) {
@@ -23,7 +22,6 @@ export const excluirTodasTabelas = async () => {
             console.log(`Tabela ${tabela} excluída com sucesso.`);
         }
 
-        // Reabilitar restrições de chave estrangeira após as exclusões
         await db.execAsync("PRAGMA foreign_keys = ON");
 
     } catch (error) {
@@ -43,6 +41,7 @@ export const createTable_mv_coleta = async () => {
             idVolume BIGINT NOT NULL,
             idVolumeProduto BIGINT NOT NULL,
             idUsuario BIGINT,
+            nomeTelefone VARCHAR NOT NULL,
             dataHoraColeta DATETIME,
             dataHoraImportacao DATETIME,
             FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),

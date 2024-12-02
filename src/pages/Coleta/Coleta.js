@@ -5,14 +5,21 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useRoute } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/AntDesign'
 import * as Animatable from 'react-native-animatable';;
-import { conferirSeJaFoiColetado, deletarTodasColetas, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetadosDeUmProduto, fetchNaoColetados, fetchNaoColetadosPorProduto, fetchProdutosQueTiveramColetas, insertColeta } from "../../database/services/coletaService";
+import { conferirSeJaFoiColetado, deletarColetaPorId, deletarColetaPorIdColeta, deletarColetaPorIdPackinglistAndIdProdutoAndSeq, deletarTodasColetas, fetchColetaPorIdColeta, fetchColetaPorIdPackinglistAndIdProdutoAndSeq, fetchColetas, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetadosDeUmProduto, fetchNaoColetados, fetchNaoColetadosPorProduto, fetchProdutosQueTiveramColetas, insertColeta } from "../../database/services/coletaService";
 import { fetchPackingListProdutos } from "../../database/services/packingListProdutoService";
 import { fetchQuantidadeVolumesProdutosDeUmProduto } from "../../database/services/volumeProdutoService";
 import { fetchDescricaoVolume } from "../../database/services/volumeService";
 import { fetchPackingListPorId, fetchPackingLists } from "../../database/services/packingListService";
+import * as SecureStore from 'expo-secure-store';
+import { format } from "date-fns";
+import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 
 export default function Coleta({ navigation }) {
 
+    const [idUsuario, setIdUsuario] = useState(null);
+    let nomeTelefone = "";
+    let telefoneOS = "";
     const cores = ['#6DCFE3', '#87E090', '#B2E03D', '#5B91E8', '#0EA6E8'];
 
     const [cameraPermissao, setCameraPermissao] = useState(null);
@@ -38,8 +45,36 @@ export default function Coleta({ navigation }) {
         setCameraPermissao(status === 'granted');
     }
 
+    const getDeviceInfo = () => {
+        if (Platform.OS === 'ios') {
+            nomeTelefone = `${Device.deviceName}` || "Desconhecido";
+            telefoneOS = "ios";
+        } else if (Platform.OS === 'android') {
+            nomeTelefone = `${Device.deviceName}` || "Desconhecido";
+            telefoneOS = "android"
+        } else {
+            return 'Sistema operacional desconhecido';
+        }
+    };
+
+    const getId = async () => {
+        const id = await SecureStore.getItemAsync('id');
+        setIdUsuario(id);
+    }
+
     // roda a permissao e chama funçao para exibir os produtos que foram importados, aparecendo no topo da tela
     useEffect(() => {
+        
+        getDeviceInfo();
+        console.log('nomeTelefone: ', nomeTelefone)
+        console.log('telefoneOS: ', telefoneOS)
+        const coletas = async () => {
+            console.log('coletas: ', await fetchColetas())
+        }
+
+        coletas()
+
+        getId();
         getBarCodeScannerPermissoes();
 
         fetchColetados();
@@ -283,7 +318,9 @@ export default function Coleta({ navigation }) {
                         seq: seq,
                         idVolume: idVolume,
                         idVolumeProduto: idVolumeProduto,
-                        dataHoraColeta: dataHoraColeta.toISOString().replace('T', ' ').slice(0, 19),
+                        idUsuario: idUsuario,
+                        nomeTelefone: Device.deviceName,
+                        dataHoraColeta: dataHoraColeta.toISOString()
                     }
 
                     await insertColeta(coleta_realizada);
@@ -323,6 +360,50 @@ export default function Coleta({ navigation }) {
 
     };
 
+    const handleExcluirColeta = async (item) => {
+        console.log('item: ', item)
+        const coleta = await fetchColetaPorIdColeta(item.idColeta);
+        if (selecionado === "naoColetados") {
+            return;
+        } else {
+            Alert.alert(
+                "Confirmação",
+                "Deseja excluir essa coleta?",
+                [
+                    {
+                        text: "Sim", onPress: async () => {
+                            excluirColeta(item);
+                        }
+                    },
+                    { text: "Não", onPress: () => { }, style: 'cancel' },
+                ],
+                { cancelable: false }
+            );
+        }
+    }
+
+    const excluirColeta = async (item) => {
+        try {
+
+            await deletarColetaPorIdColeta(item.idColeta);
+            await fetchColetados();
+            await fetchListaProdutos();
+            await Alert.alert(
+                "",
+                "Coleta excluida com sucesso",
+                [
+                    {
+                        text: "Ok", onPress: () => { }
+                    },
+                ],
+                { cancelable: false }
+            );
+
+        } catch (error) {
+            console.log('Erro ao excluir coleta:', error.message);
+        }
+    }
+
     useEffect(() => {
         if (scanned) {
             setTimeout(() => {
@@ -335,9 +416,15 @@ export default function Coleta({ navigation }) {
 
         // encontrando o produto correspondente ao volume
         const produto = listaProdutos.find(prod => prod.idProduto === item.idProduto);
+        let dataHoraFormatada = null;
+        if (item.dataHoraColeta) {
+            dataHoraFormatada = format(new Date(item.dataHoraColeta), 'HH:mm:ss dd/MM/yyyy');
+        } else {
+            dataHoraFormatada = "Não coletado";
+        }
 
         return (
-            <TouchableOpacity>
+            <TouchableOpacity onLongPress={() => handleExcluirColeta(item)}>
                 <View
                     style={[
                         styles.row,
@@ -346,7 +433,7 @@ export default function Coleta({ navigation }) {
                 >
                     <Text style={styles.cellWithBorder}>{item.seqVolume}</Text>
                     <Text style={styles.cell}>{item.descricao}</Text>
-                    <Text style={styles.cell}>{item.dataHoraColeta}</Text>
+                    <Text style={styles.cell}>{dataHoraFormatada}</Text>
 
                 </View>
             </TouchableOpacity>
@@ -379,7 +466,7 @@ export default function Coleta({ navigation }) {
         }
     }, [selecionado]);
 
-    // Interpolação da posição da barra
+    // interpolação da posição da barra
     const posicaoBarra = animacao.interpolate({
         inputRange: [0, 1],
         outputRange: ['0%', '50%'],
@@ -407,8 +494,8 @@ export default function Coleta({ navigation }) {
                     </View>
                 </View>
 
-                <View style={{ width: '90%' }}>
-                    <Text>
+                <View style={{ width: '100%', display: 'flex', alignItems: 'center' }}>
+                    <View style={{ width: '80%' }}>
                         {listaProdutos.map((item, index) => (
                             <TouchableOpacity
                                 key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`}
@@ -439,22 +526,29 @@ export default function Coleta({ navigation }) {
                                     setVerificacaoSeProdutoSelecionado(true);
                                 }}
                             >
-                                <Text style={{
-                                    marginTop: '5px',
-                                    fontWeight:
-                                        produtoSelecionado?.idPackinglist === item.idPackinglist &&
-                                            produtoSelecionado?.idProduto === item.idProduto &&
-                                            produtoSelecionado?.seq === item.seq
-                                            ? 'bold'
-                                            : 'normal',
-                                }}>
+                                <Text
+                                    style={{
+                                        fontWeight:
+                                            produtoSelecionado?.idPackinglist === item.idPackinglist &&
+                                                produtoSelecionado?.idProduto === item.idProduto &&
+                                                produtoSelecionado?.seq === item.seq
+                                                ? 'bold'
+                                                : 'normal',
+                                        flexWrap: 'wrap',
+                                        width: '100%',
+                                        lineHeight: 20,
+                                        textAlign: 'left',
+                                    }}
+                                    numberOfLines={0}
+                                >
                                     {item.ordemProducao} / {item.descricaoProduto}: [{item.quantidadeColetada}/
                                     {item.quantidadeTotalDeVolumes}]
                                 </Text>
                             </TouchableOpacity>
                         ))}
-                    </Text>
+                    </View>
                 </View>
+
 
                 <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
 
@@ -595,8 +689,6 @@ const styles = StyleSheet.create({
         flex: 1,
         textAlign: 'center',
         paddingHorizontal: 5,
-        borderRightWidth: 1,
-        borderRightColor: '#ccc',
     },
     cell: {
         flex: 1,

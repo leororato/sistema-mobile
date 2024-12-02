@@ -18,6 +18,7 @@
     "date-fns": "^4.1.0",
     "expo": "~51.0.28",
     "expo-barcode-scanner": "~13.0.1",
+    "expo-device": "^7.0.1",
     "expo-secure-store": "~13.0.2",
     "expo-sqlite": "~14.0.6",
     "expo-status-bar": "~1.12.1",

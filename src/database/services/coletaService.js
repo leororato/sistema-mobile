@@ -8,8 +8,8 @@ export const insertColeta = async (data) => {
 
         const result = await db.runAsync(
             `INSERT INTO mv_coleta (
-            idPackinglist, idProduto, seq, idVolume, idVolumeProduto, idUsuario, dataHoraColeta, dataHoraImportacao
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            idPackinglist, idProduto, seq, idVolume, idVolumeProduto, idUsuario, nomeTelefone, dataHoraColeta, dataHoraImportacao
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
             `,
             [
                 data.idPackinglist,
@@ -18,6 +18,7 @@ export const insertColeta = async (data) => {
                 data.idVolume,
                 data.idVolumeProduto,
                 data.idUsuario,
+                data.nomeTelefone,
                 data.dataHoraColeta,
                 data.dataHoraImportacao
             ]
@@ -39,10 +40,32 @@ export const fetchColetas = async () => {
     }
 };
 
+export const fetchColetaPorIdColeta = async (idColeta) => {
+    const db = await getDBConnection();
+    try {
+        const response = await db.getAllAsync('SELECT * FROM mv_coleta WHERE idColeta = ?', [idColeta]);
+        return response;
+    } catch (error) {
+        console.error("Erro ao buscar coletas:", error);
+        throw error;
+    }
+};
+
+export const fetchColetasParaExportacao = async () => {
+    const db = await getDBConnection();
+    try {
+        const coletas = await db.getAllAsync('SELECT idPackinglist, idProduto, seq, idVolume, idVolumeProduto, idUsuario, nomeTelefone, dataHoraColeta FROM mv_coleta');
+        return coletas;
+    } catch (error) {
+        console.error("Erro ao buscar coletas:", error);
+        throw error;
+    }
+};
+
 export const fetchItensColetadosDeUmProduto = async (idPackinglist, idProduto, seq) => {
     const db = await getDBConnection();
     try {
-        const resposne = await db.getAllAsync(`SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
+        const resposne = await db.getAllAsync(`SELECT c.idColeta, c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
         FROM mv_coleta c
         LEFT JOIN mv_volume v
         ON c.idVolume = v.idVolume
@@ -62,7 +85,7 @@ export const fetchColetasMaisRecentes = async () => {
     const db = await getDBConnection();
     try {
         const response = await db.getAllAsync(`
-        SELECT c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
+        SELECT c.idColeta, c.idPackinglist, c.idProduto, c.seq, c.dataHoraColeta, v.descricao, vv.seqVolume
         FROM mv_coleta c
         LEFT JOIN mv_volume v
         ON c.idVolume = v.idVolume
@@ -82,7 +105,7 @@ export const fetchColetasMaisRecentes = async () => {
 export const fetchNaoColetados = async () => {
     const db = await getDBConnection();
     try {
-        const response = await db.getAllAsync(`SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao
+        const response = await db.getAllAsync(`SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao, vv.seqVolume
             FROM mv_volumes_produto vv
             LEFT JOIN mv_coleta c
                 ON vv.idPackinglist = c.idPackinglist
@@ -105,7 +128,7 @@ export const fetchNaoColetadosPorProduto = async (idPackinglist, idProduto, seq)
     const db = await getDBConnection();
     try {
         const response = await db.getAllAsync(`
-            SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao 
+            SELECT vv.idVolumeProduto, vv.idPackinglist, vv.idProduto, vv.seq, vv.idVolume, v.descricao, vv.seqVolume 
             FROM mv_volumes_produto vv LEFT JOIN mv_coleta c
             ON vv.idPackinglist = c.idPackinglist
             AND vv.idProduto = c.idProduto
@@ -203,6 +226,17 @@ export const deletarColetaPorId = async (idColeta, idPackinglist, idProduto, seq
         await db.runAsync(`DELETE FROM mv_coleta WHERE idColeta = ? AND idPackinglist = ? AND idProduto = ? AND seq = ? AND
              idVolume = ? AND idVolumeProduto = ? AND idUsuario = ?`, [idColeta, idPackinglist, idProduto, seq, idVolume, idVolumeProduto, idUsuario]);
         Alert.alert('Coleta removida com sucesso');
+    } catch (error) {
+        console.error("Erro ao remover coleta por ID:", error);
+        throw error;
+    }
+}
+
+export const deletarColetaPorIdColeta = async (idColeta) => {
+    const db = await getDBConnection();
+    try {
+        await db.runAsync(`DELETE FROM mv_coleta WHERE idColeta = ?`, [idColeta]);
+
     } catch (error) {
         console.error("Erro ao remover coleta por ID:", error);
         throw error;
