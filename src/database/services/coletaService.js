@@ -213,7 +213,6 @@ export const deletarTodasColetas = async () => {
     const db = await getDBConnection();
     try {
         await db.runAsync('DELETE FROM mv_coleta');
-        Alert.alert('Todas coletas foram removidas com sucesso');
     } catch (error) {
         console.error("Erro ao remover todas coletas:", error);
         throw error;

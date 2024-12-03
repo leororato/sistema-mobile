@@ -1,30 +1,63 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
 import api from '../../../axiosConfig';
 import * as SecureStore from 'expo-secure-store';
-import { fetchPackingListsQuantidade } from '../../database/services/packingListService';
 import internetStatus from '../../components/VerificarConexaoComInternet/InternetStatus';
+import Icon from 'react-native-vector-icons/AntDesign';
+import { fetchPackingListsQuantidade } from '../../database/services/packingListService';
 
 export default function Login({ navigation }) {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
+  const [contextLoading, setContextLoading] = useState(false);
+  const token = SecureStore.getItem('token');
 
+  const VerificarSeExisteImportada = async () => {
+    let rota;
+    const quantidade = await fetchPackingListsQuantidade();
+    console.log('quantidade: ', quantidade)
+    rota = quantidade > 0 ? "Importadas" : "Inicio";
+    navigation.replace(rota);
+  }
+
+  useEffect(() => {
+    const verificarExpiracaoDoToken = async () => {
+      console.log('token: ', token)
+
+      if (token) {
+        const response = await api.post("/usuario/validate-token", { token });
+        if (response.data) {
+          VerificarSeExisteImportada();
+        } else {
+          return;
+        }
+      } else {
+        return;
+      }
+    }
+
+    verificarExpiracaoDoToken();
+  }, [])
 
   const handleLogin = async () => {
-
+    setContextLoading(true)
     try {
       const statusInternet = internetStatus();
       if (statusInternet) {
-
         const response = await api.post('http://192.168.0.122:8080/auth/login', { login: login, senha: senha });
         console.log('resp: ', response.data)
+        await SecureStore.deleteItemAsync('token');
+        await SecureStore.deleteItemAsync('id');
+        await SecureStore.deleteItemAsync('nivelAcesso');
+        await SecureStore.deleteItemAsync('nome');
+
         await SecureStore.setItemAsync('token', response.data.token);
         await SecureStore.setItemAsync('id', JSON.stringify(response.data.id));
         await SecureStore.setItemAsync('nivelAcesso', JSON.stringify(response.data.nivelAcesso));
         await SecureStore.setItemAsync('nome', response.data.nome);
 
-        console.log('resp: ', response.data)
-        navigation.navigate('Inicio');
+        VerificarSeExisteImportada();
+
       } else {
         Alert.alert(
           'Atenção',
@@ -37,68 +70,92 @@ export default function Login({ navigation }) {
 
     } catch (error) {
       console.log("Erro no login: ", error);
-    }
-  }
-
-  useEffect(() => {
-    navegacaoParaInicioOuImportacao();
-  }, [])
-
-  const navegacaoParaInicioOuImportacao = async () => {
-    const response = await fetchPackingListsQuantidade();
-    if (response === 0) {
-      navigation.navigate('Inicio');
-    } else {
-      navigation.navigate('Importadas');
+    } finally {
+      setContextLoading(false);
     }
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tela de Login</Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <View style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={{ width: 200, height: 200 }}
+            resizeMode="contain"
+          />
+          <View style={styles.iconContainer}>
+            <Icon name="user" size={50} color="#000" />
+          </View>
+        </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Login"
-        value={login}
-        onChangeText={setLogin}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        secureTextEntry
-        value={senha}
-        onChangeText={setSenha}
-      />
+        <Text style={styles.title}>Login</Text>
 
-      <ActivityIndicator
-        size={24}
-        color={"#FFF"}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="Login"
+          value={login}
+          onChangeText={setLogin}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Senha"
+          secureTextEntry
+          value={senha}
+          onChangeText={setSenha}
+        />
 
-      <Button title="Entrar" onPress={handleLogin} />
-    </View>
+        {contextLoading ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : (
+          <TouchableOpacity onPress={handleLogin} style={styles.botaoEntrar}>
+            <Text style={{ color: '#fff' }}>Entrar</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#f7f7f7',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 24,
-    textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   input: {
-    height: 50,
-    borderColor: '#ccc',
+    width: '80%',
+    height: 40,
     borderWidth: 1,
-    borderRadius: 5,
-    marginBottom: 15,
-    paddingHorizontal: 10,
+    borderColor: '#ccc',
+    marginBottom: 16,
+    paddingHorizontal: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 2,
+    borderColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  botaoEntrar: {
+    backgroundColor: '#2196F3',
+    paddingLeft: 30,
+    paddingRight: 30,
+    paddingTop: 8,
+    paddingBottom: 8,
+    borderRadius: 4,
   },
 });

@@ -101,10 +101,13 @@ export default function Importadas({ navigation }) {
         await deletarVolumeProdutoPorIdPackinglist(idPackinglist);
         await deletarPackinglistProdutoPorIdPackinglist(idPackinglist);
         await deletarPackinglistPorId(idPackinglist);
+        await deletarTodasColetas();
 
         await buscarPackinglistsImportadas();
 
         Alert.alert('Packinglist removida.');
+
+        navigation.replace("Inicio");
     }
 
     const limparTodasImportadas = async () => {

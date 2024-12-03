@@ -15,16 +15,15 @@ export default function App() {
     initializeDatabase();
   }, []);
 
-  return (
+  return ( 
     <NavigationContainer>
 
-      <Stack.Navigator initialRouteName="Inicio">
+      <Stack.Navigator initialRouteName="Login">
         <Stack.Screen
           name="Login"
           component={Login}
           options={{
-            headerTitleAlign: 'center',
-            headerLeft: () => null,
+            headerShown: false
           }}
         />
 

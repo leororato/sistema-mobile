@@ -19,7 +19,17 @@ export default function Inicio({ navigation }) {
 
 
     useEffect(() => {
-        fetchPackinglistsInicio();
+        const VerificarSeExisteImportada = async () => {
+            const response = await fetchPackingListsQuantidade();
+            console.log('response: ', response)
+            if (response > 0) {
+                navigation.replace("Importadas");
+            } else {
+                fetchPackinglistsInicio();                
+            }
+        }
+
+        VerificarSeExisteImportada();
     }, []);
 
     const fetchPackinglistsInicio = async () => {
@@ -143,7 +153,7 @@ export default function Inicio({ navigation }) {
                         { text: 'OK', onPress: () => { navigation.navigate("Importadas") }, style: 'cancel' },
                     ],
                 );
-                navigation.navigate('Importadas')
+                navigation.replace('Importadas')
             } else {
                 Alert.alert(
                     'Atenção',
@@ -213,41 +223,44 @@ export default function Inicio({ navigation }) {
 
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#e4ffee' }}>
+        <View style={{ backgroundColor: '#e4ffee', flex: 1, justifyContent: 'space-between' }}>
+            <View style={{ display: 'flex', height: '80%' }}>
+                <View
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: height / 2,
+                        backgroundColor: '#1780e2',
+                        borderBottomLeftRadius: 50,
+                        borderBottomRightRadius: 50,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.4,
+                        shadowRadius: 4,
+                    }}
+                />
 
-            <View
-                style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: height / 2,
-                    backgroundColor: '#1780e2',
-                    borderBottomLeftRadius: 50,
-                    borderBottomRightRadius: 50,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.4,
-                    shadowRadius: 4,
-                }}
-            />
-
-            <FlatList
-                data={packinglistsExistentes}
-                keyExtractor={(item) => item.idPackinglist.toString()}
-                renderItem={renderPackingListItem}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={['#000']}
-                    />
-                }
-                contentContainerStyle={{ flexGrow: 1 }}
-                style={{ marginTop: 100 }}
-            />
-
-            <BarraFooter navigation={navigation} />
+                <FlatList
+                    data={packinglistsExistentes}
+                    keyExtractor={(item) => item.idPackinglist.toString()}
+                    renderItem={renderPackingListItem}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            colors={['#000']}
+                        />
+                    }
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    style={{ marginTop: 100, marginBottom: -100 }}
+                />
+            </View>
+            
+            <View style={{ display: 'flex' }}>
+                <BarraFooter navigation={navigation} />
+            </View>
         </View>
     );
 
@@ -294,6 +307,14 @@ const style = StyleSheet.create({
         color: '#333',
         fontSize: 14,
     },
-
+    gifContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20, // Distância da parte inferior
+    },
+    gif: {
+        width: 100,  // Largura do GIF
+        height: 100, // Altura do GIF
+    },
 });
 

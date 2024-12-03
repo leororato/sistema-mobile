@@ -1,17 +1,15 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { fetchPackingLists, fetchPackingListsQuantidade } from '../../database/services/packingListService';
+import { fetchPackingListsQuantidade } from '../../database/services/packingListService';
 
 export default function BarraFooter({ navigation }) {
 
     const navegacaoParaInicioOuImportacao = async () => {
+        let rota;
         const response = await fetchPackingListsQuantidade();
-        if (response === 0) {
-            navigation.navigate('Inicio');
-        } else {
-            navigation.navigate('Importadas');
-        }
+        rota = response == true ? "Importadas" : "Inicio";
+        navigation.replace(rota);        
     }
 
     return (
