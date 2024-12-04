@@ -12,6 +12,13 @@ export default function BarraFooter({ navigation }) {
         navigation.replace(rota);        
     }
 
+    const navegacaoParaColetaOuSemPl = async () => {
+        let rota;
+        const response = await fetchPackingListsQuantidade();
+        rota = response == true ? "Coleta" : "ColetaSemPl";
+        navigation.replace(rota);        
+    }
+
     return (
         <View style={styles.containerBarraFooter}>
             <TouchableOpacity style={styles.viewIcone} onPress={navegacaoParaInicioOuImportacao}>
@@ -21,7 +28,7 @@ export default function BarraFooter({ navigation }) {
             </TouchableOpacity>
 
             <View style={styles.bordaCentral} />
-            <TouchableOpacity onPress={() => navigation.navigate('Coleta')} style={styles.viewIcone}>
+            <TouchableOpacity onPress={navegacaoParaColetaOuSemPl} style={styles.viewIcone}>
                 <View>
                     <Icon name="barcode-outline" size={30} color="#000" />
                 </View>
@@ -54,7 +61,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         backgroundColor: '#e4ffee',
-        elevation: 1,
+        elevation: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
         width: '100%',
         position: 'absolute',
         bottom: 0,

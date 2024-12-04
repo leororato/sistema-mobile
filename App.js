@@ -6,6 +6,8 @@ import Inicio from './src/pages/Inicio/Inicio';
 import Importadas from './src/pages/Importadas/Importadas';
 import initializeDatabase from './src/database/initializeDatabase';
 import Coleta from './src/pages/Coleta/Coleta';
+import { Image } from 'react-native';
+import ColetaSemPl from './src/pages/Coleta/ColetaSemPl';
 
 const Stack = createNativeStackNavigator();
 
@@ -15,7 +17,7 @@ export default function App() {
     initializeDatabase();
   }, []);
 
-  return ( 
+  return (
     <NavigationContainer>
 
       <Stack.Navigator initialRouteName="Login">
@@ -23,7 +25,7 @@ export default function App() {
           name="Login"
           component={Login}
           options={{
-            headerShown: false
+            headerShown: false,
           }}
         />
 
@@ -31,7 +33,17 @@ export default function App() {
           name="Importadas"
           component={Importadas}
           options={{
-            headerShown: false
+            headerTitle: () => (
+              <Image
+                source={require('./assets/logo.png')}
+                style={{ width: 150, height: 40, resizeMode: 'contain', display: 'flex' }}
+              />
+            ),
+            headerStyle: {
+              backgroundColor: '#1780e2',
+            },
+            headerTitleAlign: 'center',
+            headerLeft: () => null
           }}
         />
 
@@ -43,10 +55,27 @@ export default function App() {
           }}
         />
         <Stack.Screen
+          name="ColetaSemPl"
+          component={ColetaSemPl}
+          options={{
+            headerShown: false
+          }}
+        />
+        <Stack.Screen
           name="Inicio"
           component={Inicio}
           options={{
-            headerShown: false
+            headerTitle: () => (
+              <Image
+                source={require('./assets/logo.png')}
+                style={{ width: 150, height: 40, resizeMode: 'contain', display: 'flex' }}
+              />
+            ),
+            headerStyle: {
+              backgroundColor: '#1780e2',
+            },
+            headerTitleAlign: 'center',
+            headerLeft: () => null,
           }}
         />
 

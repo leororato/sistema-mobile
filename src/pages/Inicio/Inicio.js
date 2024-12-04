@@ -9,6 +9,7 @@ import { insertVolumesProdutos } from "../../database/services/volumeProdutoServ
 import { insertVolume } from "../../database/services/volumeService.js";
 import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
 import { insertColeta } from "../../database/services/coletaService.js";
+import { deviceName } from "expo-device";
 
 export default function Inicio({ navigation }) {
 
@@ -21,11 +22,10 @@ export default function Inicio({ navigation }) {
     useEffect(() => {
         const VerificarSeExisteImportada = async () => {
             const response = await fetchPackingListsQuantidade();
-            console.log('response: ', response)
             if (response > 0) {
                 navigation.replace("Importadas");
             } else {
-                fetchPackinglistsInicio();                
+                fetchPackinglistsInicio();
             }
         }
 
@@ -35,7 +35,7 @@ export default function Inicio({ navigation }) {
     const fetchPackinglistsInicio = async () => {
         try {
             const statusInternet = await internetStatus();
-            console.log('statusnet: ', statusInternet)
+
             if (statusInternet) {
                 const response = await api.get('/packinglist/mobile-listagem-packinglist-inicio');
                 setPackinglistsExistentes(response.data);
@@ -54,21 +54,62 @@ export default function Inicio({ navigation }) {
         }
     };
 
-    const importar = async (idPackinglist) => {
-        console.log('id packinglist: ', idPackinglist)
+    const handleImportarContinuacaoColeta = async (idPackinglist) => {
         const statusInternet = internetStatus();
+
         try {
 
             if (statusInternet) {
 
+
+
+            } else {
+                Alert.alert(
+                    'Atenção',
+                    'Não há conexão com a internet. Não foi possível baixar a packinglist.',
+                    [
+                        { text: 'OK', onPress: () => { }, style: 'cancel' },
+                    ],
+                );
+            }
+
+
+        } catch (error) {
+
+        }
+    }
+
+    const handleImportarNovaColeta = async () => {
+
+    }
+
+    const mostrarAlerta = (message, options) => {
+        return new Promise((resolve) => {
+            Alert.alert(
+                "Está lista já possui coletas realizadas.",
+                message,
+                [
+                    { text: 'Cancelar', onPress: () => { }, style:"cancel" },
+                    { text: 'Iniciar nova', onPress: () => resolve('nova') },
+                    { text: 'Continuar', onPress: () => resolve('continuar') },
+                ]
+            );
+        });
+    };
+    
+    const importar = async (idPackinglist, tipoDeImportacao) => {
+        const statusInternet = internetStatus();
+        const nomeTelefone = deviceName;
+        console.log('nomeTel: ', nomeTelefone)
+        try {
+            if (statusInternet) {
                 const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
                 const packingList = response.data.packingListImportacaoMobile;
                 const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
                 const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
                 const volumeArray = response.data.volumeImportacaoMobile;
                 const coletaArray = response.data.coletaImportacaoMobile;
-
-                // Salvar PackingList principal
+    
                 const packingListImportar = {
                     idPackinglist: packingList.idPackinglist,
                     nomeImportador: packingList.nomeImportador,
@@ -76,10 +117,22 @@ export default function Inicio({ navigation }) {
                     pesoBrutoTotal: packingList.pesoBrutoTotal,
                     numeroColetas: packingList.numeroColetas
                 };
-
+                console.log('nomeTelArray: ', coletaArray[0].nomeTelefone)
+    
+                if (coletaArray.length > 0 && coletaArray[0].nomeTelefone === nomeTelefone) {
+                    const tipoDeImportacaoResposta = await mostrarAlerta(
+                        "Você deseja iniciar uma nova coleta ou continuar da onde parou?"
+                    );
+                    tipoDeImportacao = tipoDeImportacaoResposta;
+                    if (tipoDeImportacao === "nova") {
+                        // Lógica para iniciar uma nova coleta
+                    } else if (tipoDeImportacao === "continuar") {
+                        // Lógica para continuar
+                    }
+                }
+    
                 await insertPackingList(packingListImportar);
-
-                // Salvar PackingListProduto
+    
                 await Promise.all(
                     packingListProdutoArray.map(async (packingListProduto) => {
                         const packingListProdutoImportar = {
@@ -96,8 +149,7 @@ export default function Inicio({ navigation }) {
                         await insertPackingListProduto(packingListProdutoImportar);
                     })
                 );
-
-                // Salvar VolumeProduto
+    
                 await Promise.all(
                     volumeProdutoArray.map(async (volumeProduto) => {
                         const volumeProdutoImportar = {
@@ -112,8 +164,7 @@ export default function Inicio({ navigation }) {
                         await insertVolumesProdutos(volumeProdutoImportar);
                     })
                 );
-
-                // Salvar Volumes
+    
                 await Promise.all(
                     volumeArray.map(async (volume) => {
                         const volumeImportar = {
@@ -127,50 +178,50 @@ export default function Inicio({ navigation }) {
                         await insertVolume(volumeImportar);
                     })
                 );
-
-                // Salvar coletas
-                await Promise.all(
-                    coletaArray.map(async (coleta) => {
-                        const coletaImportar = {
-                            idColeta: coleta.idColeta,
-                            idPackinglist: coleta.idPackinglist,
-                            idProduto: coleta.idProduto,
-                            seq: coleta.seq,
-                            idVolume: coleta.idVolume,
-                            idVolumeProduto: coleta.idVolumeProduto,
-                            idUsuario: coleta.idUsuario,
-                            nomeTelefone: coleta.nomeTelefone,
-                            dataHoraColeta: coleta.dataHoraColeta,
-                        };
-                        await insertColeta(coletaImportar);
-                    })
-                );
-
+    
+                if (tipoDeImportacao === "continuar") {
+                    await Promise.all(
+                        coletaArray.map(async (coleta) => {
+                            const coletaImportar = {
+                                idColeta: coleta.idColeta,
+                                idPackinglist: coleta.idPackinglist,
+                                idProduto: coleta.idProduto,
+                                seq: coleta.seq,
+                                idVolume: coleta.idVolume,
+                                idVolumeProduto: coleta.idVolumeProduto,
+                                idUsuario: coleta.idUsuario,
+                                nomeTelefone: coleta.nomeTelefone,
+                                dataHoraColeta: coleta.dataHoraColeta,
+                            };
+                            await insertColeta(coletaImportar);
+                        })
+                    );
+                }
+    
                 Alert.alert(
                     "Importação completa",
-                    'Packinglist importada com sucesso!',
+                    'Packinglist baixada com sucesso!',
                     [
                         { text: 'OK', onPress: () => { navigation.navigate("Importadas") }, style: 'cancel' },
-                    ],
+                    ]
                 );
-                navigation.replace('Importadas')
+                navigation.replace('Importadas');
             } else {
                 Alert.alert(
                     'Atenção',
-                    'Não há conexão com a internet. Não foi possível importar a packinglist.',
+                    'Não há conexão com a internet. Não foi possível baixar a packinglist.',
                     [
                         { text: 'OK', onPress: () => { }, style: 'cancel' },
-                    ],
+                    ]
                 );
             }
-
         } catch (error) {
             console.log('Erro ao buscar PackingList: ', error);
         }
-    }
+    };
+    
 
     const handleImportarPackinglist = async (idPackinglist) => {
-        console.log('packinglist id:', idPackinglist)
         const packinglist = await fetchPackingListPorId(idPackinglist);
 
         if (!packinglist) {
@@ -178,7 +229,7 @@ export default function Inicio({ navigation }) {
         } else {
             Alert.alert(
                 'Importar Packinglist',
-                'Esta packinglist já foi importada, deseja atualizá-lo?',
+                'Esta packinglist já foi baixada, deseja atualizá-la?',
                 [
                     { text: 'Sim', onPress: () => importar(idPackinglist) },
                     { text: 'Não', onPress: () => { }, style: 'cancel' },
@@ -196,7 +247,7 @@ export default function Inicio({ navigation }) {
                 <View style={style.containerListaPackinglist}>
                     <View style={[style.row, isLastItem && style.lastRow]}>
                         <View style={style.cell}>
-                            <Text style={{ fontWeight: 'bold' }}>ID: {item.idPackinglist}</Text>
+                            <Text style={{ fontWeight: 'bold' }}>N° Lista: {item.idPackinglist}</Text>
                         </View>
                         <View style={style.cell}>
                             <Text style={{ fontWeight: 'bold' }}>Cliente: {item.nomeClienteImportador}</Text>
@@ -206,7 +257,7 @@ export default function Inicio({ navigation }) {
                     <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
                         onPress={() => { handleImportarPackinglist(item.idPackinglist) }}
                     >
-                        <Text><Icon name="download" size={24} color="#000" />  Importar</Text>
+                        <Text><Icon name="download" size={24} color="#000" />  Baixar</Text>
                     </TouchableOpacity>
 
                 </View>
@@ -254,10 +305,10 @@ export default function Inicio({ navigation }) {
                         />
                     }
                     contentContainerStyle={{ flexGrow: 1 }}
-                    style={{ marginTop: 100, marginBottom: -100 }}
+                    style={{ marginTop: 30, marginBottom: -100 }}
                 />
             </View>
-            
+
             <View style={{ display: 'flex' }}>
                 <BarraFooter navigation={navigation} />
             </View>
@@ -270,7 +321,8 @@ const style = StyleSheet.create({
     containerRow: {
         display: 'flex',
         alignItems: 'center',
-        marginTop: 50,
+        marginTop: 30,
+        marginBottom: 20,
         width: '100%',
     },
     containerListaPackinglist: {
@@ -285,6 +337,7 @@ const style = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
+        elevation: 5,
     },
     containerLinhaRow: {
         display: 'flex',

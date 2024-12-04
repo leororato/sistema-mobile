@@ -3,13 +3,14 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useEffect, useState } from "react";
 import Icon from 'react-native-vector-icons/AntDesign';
 import { format } from 'date-fns';
-import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPackingLists, fetchPackingListsQuantidade } from "../../database/services/packingListService.js";
-import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos } from "../../database/services/packingListProdutoService.js";
-import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos } from "../../database/services/volumeProdutoService.js";
-import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes } from "../../database/services/volumeService.js";
-import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao } from "../../database/services/coletaService.js";
+import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPackingLists, fetchPackingListsQuantidade, insertPackingList } from "../../database/services/packingListService.js";
+import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos, insertPackingListProduto } from "../../database/services/packingListProdutoService.js";
+import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos, insertVolumesProdutos } from "../../database/services/volumeProdutoService.js";
+import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes, insertVolume } from "../../database/services/volumeService.js";
+import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao, insertColeta } from "../../database/services/coletaService.js";
 import api from "../../../axiosConfig.js";
 import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
+import { deletarTodosItensDeletados, fetchTodasColetasDeletadas } from "../../database/services/itensDeletarService.js";
 
 export default function Importadas({ navigation }) {
 
@@ -32,7 +33,7 @@ export default function Importadas({ navigation }) {
 
     const handleExportarColetas = () => {
         Alert.alert(
-            "Deseja enviar a packinglist?",
+            "Deseja enviar a lista?",
             '',
             [
                 {
@@ -45,14 +46,162 @@ export default function Importadas({ navigation }) {
         );
     };
 
+    const handleImportarNovamente = async (idPackinglist) => {
+        Alert.alert(
+            'Atualizar Lista',
+            `Deseja baixar a lista novamente?`,
+            [
+                {
+                    text: 'Sim', onPress: () => Alert.alert(
+                        
+                        'Verifique as coletas.',
+                        'A lista selecionada para exclusão possui coletas que não foram enviadas para o servidor, deseja mesmo exclui-la?',
+                        [
+                            {
+                                text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
+                            }, 
+                            { text: 'Cancelar', onPress: () => { }, style: 'cancel'},
+                        ]
+                    )
+                },
+                { text: 'Não', onPress: () => { }, style: 'cancel' },
+            ],
+            { cancelable: false }
+        );
+    }
+
+    const importar = async (idPackinglist) => {
+        console.log('id packinglist: ', idPackinglist)
+        const statusInternet = internetStatus();
+        try {
+
+            if (statusInternet) {
+
+                await deletarItensPackinglist(idPackinglist);
+
+                const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+                const packingList = response.data.packingListImportacaoMobile;
+                const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
+                const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
+                const volumeArray = response.data.volumeImportacaoMobile;
+                const coletaArray = response.data.coletaImportacaoMobile;
+
+                // Salvar PackingList principal
+                const packingListImportar = {
+                    idPackinglist: packingList.idPackinglist,
+                    nomeImportador: packingList.nomeImportador,
+                    pesoLiquidoTotal: packingList.pesoLiquidoTotal,
+                    pesoBrutoTotal: packingList.pesoBrutoTotal,
+                    numeroColetas: packingList.numeroColetas
+                };
+
+                await insertPackingList(packingListImportar);
+
+                // Salvar PackingListProduto
+                await Promise.all(
+                    packingListProdutoArray.map(async (packingListProduto) => {
+                        const packingListProdutoImportar = {
+                            idPackinglist: packingListProduto.idPackinglist,
+                            idProduto: packingListProduto.idProduto,
+                            seq: packingListProduto.seq,
+                            produto: packingListProduto.produto,
+                            descricaoProduto: packingListProduto.descricaoProduto,
+                            ordemProducao: packingListProduto.ordemProducao,
+                            totalPesoLiquido: packingListProduto.totalPesoLiquido,
+                            totalPesoBruto: packingListProduto.totalPesoBruto,
+                            numeroSerie: packingListProduto.numeroSerie,
+                        };
+                        await insertPackingListProduto(packingListProdutoImportar);
+                    })
+                );
+
+                // Salvar VolumeProduto
+                await Promise.all(
+                    volumeProdutoArray.map(async (volumeProduto) => {
+                        const volumeProdutoImportar = {
+                            idVolumeProduto: volumeProduto.idVolumeProduto,
+                            idPackinglist: volumeProduto.idPackinglist,
+                            idProduto: volumeProduto.idProduto,
+                            seq: volumeProduto.seq,
+                            idVolume: volumeProduto.idVolume,
+                            qrCodeVolumeProduto: volumeProduto.qrCodeVolumeProduto,
+                            seqVolume: volumeProduto.seqVolume,
+                        };
+                        await insertVolumesProdutos(volumeProdutoImportar);
+                    })
+                );
+
+                // Salvar Volumes
+                await Promise.all(
+                    volumeArray.map(async (volume) => {
+                        const volumeImportar = {
+                            idVolume: volume.idVolume,
+                            idTipoVolumeId: volume.idTipoVolumeId,
+                            quantidadeItens: volume.quantidadeItens,
+                            descricao: volume.descricao,
+                            pesoLiquido: volume.pesoLiquido,
+                            pesoBruto: volume.pesoBruto,
+                        };
+                        await insertVolume(volumeImportar);
+                    })
+                );
+
+                // Salvar coletas
+                await Promise.all(
+                    coletaArray.map(async (coleta) => {
+                        const coletaImportar = {
+                            idColeta: coleta.idColeta,
+                            idPackinglist: coleta.idPackinglist,
+                            idProduto: coleta.idProduto,
+                            seq: coleta.seq,
+                            idVolume: coleta.idVolume,
+                            idVolumeProduto: coleta.idVolumeProduto,
+                            idUsuario: coleta.idUsuario,
+                            nomeTelefone: coleta.nomeTelefone,
+                            dataHoraColeta: coleta.dataHoraColeta,
+                        };
+                        await insertColeta(coletaImportar);
+                    })
+                );
+
+                Alert.alert(
+                    "Importação completa",
+                    'Packinglist baixada com sucesso!',
+                    [
+                        { text: 'OK', onPress: () => { navigation.navigate("Importadas") }, style: 'cancel' },
+                    ],
+                );
+                navigation.replace('Importadas')
+            } else {
+                Alert.alert(
+                    'Atenção',
+                    'Não há conexão com a internet. Não foi possível baixar a packinglist.',
+                    [
+                        { text: 'OK', onPress: () => { }, style: 'cancel' },
+                    ],
+                );
+            }
+
+        } catch (error) {
+            console.log('Erro ao buscar PackingList: ', error);
+        }
+    }
+
     const exportarColetas = async () => {
         try {
 
             const statusInternet = await internetStatus();
             if (statusInternet) {
                 const coletasRealizadas = await fetchColetasParaExportacao();
-                await api.post("/coletas/exportar-coleta", coletasRealizadas);
+                const coletasDeletadas = await fetchTodasColetasDeletadas();
 
+                const coletaExportacaoRequest = {
+                    "coletaDTO": coletasRealizadas,
+                    "coletaDeletadasDTO": coletasDeletadas
+                };
+
+                await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
+                await deletarTodosItensDeletados();
                 Alert.alert(
                     "Packinglist enviada com sucesso.",
                     '',
@@ -63,7 +212,7 @@ export default function Importadas({ navigation }) {
             } else {
                 Alert.alert(
                     'Atenção',
-                    'Não há conexão com a internet. Não foi possível enviar as coletas do packinglist.',
+                    'Não há conexão com a internet. Não foi possível enviar as coletas da lista.',
                     [
                         { text: 'OK', onPress: () => { }, style: 'cancel' },
                     ],
@@ -83,11 +232,20 @@ export default function Importadas({ navigation }) {
     const handleExcluirPlImportada = async (idPackinglist) => {
 
         Alert.alert(
-            'Excluir importação',
-            `Tem certeza que deseja excluir a PackingList ${idPackinglist}?`,
+            'Excluir Lista',
+            `Tem certeza que deseja excluir a Lista ${idPackinglist}?`,
             [
                 {
-                    text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
+                    text: 'Sim', onPress: () => Alert.alert(
+                        'A Lista possui coletas pendentes.',
+                        'A lista selecionada para exclusão possui coletas que não foram enviadas para o servidor, deseja mesmo exclui-la?',
+                        [
+                            {
+                                text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
+                            }, 
+                            { text: 'Cancelar', onPress: () => { }, style: 'cancel'},
+                        ]
+                    )
                 },
                 { text: 'Não', onPress: () => { }, style: 'cancel' },
             ],
@@ -102,6 +260,7 @@ export default function Importadas({ navigation }) {
         await deletarPackinglistProdutoPorIdPackinglist(idPackinglist);
         await deletarPackinglistPorId(idPackinglist);
         await deletarTodasColetas();
+        await deletarTodosItensDeletados();
 
         await buscarPackinglistsImportadas();
 
@@ -122,8 +281,8 @@ export default function Importadas({ navigation }) {
             await buscarPackinglistsImportadas();
 
         } catch (error) {
-            console.error('Erro ao limpar packinglists importadas: ', error);
-            alert('Erro ao limpar packinglists importadas');
+            console.error('Erro ao limpar listas baixadas: ', error);
+            alert('Erro ao limpar listas baixadas');
         }
 
     }
@@ -136,18 +295,23 @@ export default function Importadas({ navigation }) {
                 <View style={style.containerListaPackinglist}>
                     <View style={[style.row, isLastItem && style.lastRow]}>
                         <View style={style.cell}>
-                            <Text style={{ fontWeight: 'bold' }}>ID: {item.idPackinglist}</Text>
+                            <Text style={{ fontWeight: 'bold' }}>N° Lista: {item.idPackinglist}</Text>
                         </View>
                         <View style={style.cell}>
                             <Text style={{ fontWeight: 'bold' }}>Cliente: {item.nomeImportador}</Text>
                         </View>
                     </View>
 
-                    <View style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <View style={{ display: 'flex', flexDirection: 'column', gap: 5, maxWidth: 150 }}>
                         <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
                             onPress={() => { handleExportarColetas() }}
                         >
-                            <Text><Icon name="export" size={20} color="#000" />  Exportar</Text>
+                            <Text><Icon name="export" size={20} color="#000" />  Salvar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center',  flexWrap: 'nowrap'}}
+                            onPress={() => { handleImportarNovamente(item.idPackinglist) }}
+                        >
+                            <Text><Icon name="download" size={20} color="#000" />  Baixar novamente</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
                             onPress={() => { handleExcluirPlImportada(item.idPackinglist) }}
@@ -171,7 +335,6 @@ export default function Importadas({ navigation }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#e4ffee' }}>
-
             <View
                 style={{
                     position: 'absolute',
@@ -229,6 +392,7 @@ const style = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
+        elevation: 8
     },
     containerLinhaRow: {
         display: 'flex',

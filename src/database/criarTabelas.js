@@ -9,7 +9,8 @@ export const excluirTodasTabelas = async () => {
         "mv_coleta",
         "mv_tipo_volume",
         "mv_usuario",
-        "mv_cliente"
+        "mv_cliente",
+        "mv_itens_deletar"
     ];
 
     const db = await getDBConnection();
@@ -28,6 +29,33 @@ export const excluirTodasTabelas = async () => {
         console.error("Erro ao excluir tabelas:", error);
     }
 };
+
+export const createTable_mv_itens_deletar = async () => {
+    const db = await getDBConnection();
+    try {
+        await db.execAsync(`
+            CREATE TABLE IF NOT EXISTS mv_itens_deletar (
+            idDelete INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            idPackinglist BIGINT NOT NULL,
+            idProduto BIGINT NOT NULL,
+            seq BIGINT NOT NULL,
+            idVolume BIGINT NOT NULL,
+            idVolumeProduto BIGINT NOT NULL,
+            idUsuario BIGINT,
+            nomeTelefone VARCHAR NOT NULL,
+            dataHoraColeta DATETIME,
+            FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),
+            FOREIGN KEY (idProduto, seq, idPackinglist) REFERENCES mv_packinglist_produto (idProduto, seq, idPackinglist),
+            FOREIGN KEY (idVolumeProduto, idPackinglist, idProduto, seq, idVolume) REFERENCES mv_volumes_produto (idVolumeProduto, idPackinglist, idProduto, seq, idVolume),
+            FOREIGN KEY (idUsuario) REFERENCES mv_usuario (id)
+            );
+        `)
+        console.log("Tabela mv_itens_deletar criada com sucesso.");
+    } catch (error) {
+        console.error("Erro ao criar tabela mv_coleta:", error);
+    }
+}
+
 
 export const createTable_mv_coleta = async () => {
     const db = await getDBConnection();
