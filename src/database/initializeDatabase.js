@@ -19,6 +19,6 @@ export default function initializeDatabase() {
         await createTable_mv_itens_deletar();
     };
 
-     // excluirTabelas();
-    initializeDB();
+    // excluirTabelas();
+     initializeDB();
 }

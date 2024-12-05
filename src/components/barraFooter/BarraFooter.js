@@ -35,23 +35,6 @@ export default function BarraFooter({ navigation }) {
             </TouchableOpacity>
         </View>
     );
-
-    // return (
-    //     <View style={styles.containerBarraFooter}>
-    //         <View style={styles.viewIcone}>
-    //             <TouchableOpacity onPress={navegacaoParaInicioOuImportacao}>
-    //                 <Icon name="home-outline" size={30} color="#000" />
-    //             </TouchableOpacity>
-    //         </View>
-    //         {/* Dividindo com borda no meio */}
-    //         <View style={styles.bordaCentral} />
-    //         <View style={styles.viewIcone}>
-    //             <TouchableOpacity onPress={() => navigation.navigate('Coleta')}>
-    //                 <Icon name="barcode-outline" size={30} color="#000" />
-    //             </TouchableOpacity>
-    //         </View>
-    //     </View>
-    // );
 }
 
 const styles = StyleSheet.create({

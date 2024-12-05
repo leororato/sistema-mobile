@@ -1,5 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator, Image, TouchableOpacity, KeyboardAvoidingView, ScrollView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  Animated,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import api from '../../../axiosConfig';
 import * as SecureStore from 'expo-secure-store';
 import internetStatus from '../../components/VerificarConexaoComInternet/InternetStatus';
@@ -10,42 +22,25 @@ export default function Login({ navigation }) {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [contextLoading, setContextLoading] = useState(false);
-  const token = SecureStore.getItem('token');
 
   const VerificarSeExisteImportada = async () => {
     let rota;
     const quantidade = await fetchPackingListsQuantidade();
-    console.log('quantidade: ', quantidade)
-    rota = quantidade > 0 ? "Importadas" : "Inicio";
+    console.log('quantidade: ', quantidade);
+    rota = quantidade > 0 ? 'Importadas' : 'Inicio';
     navigation.replace(rota);
-  }
-
-  useEffect(() => {
-    const verificarExpiracaoDoToken = async () => {
-      console.log('token: ', token)
-
-      if (token) {
-        const response = await api.post("/usuario/validate-token", { token });
-        if (response.data) {
-          VerificarSeExisteImportada();
-        } else {
-          return;
-        }
-      } else {
-        return;
-      }
-    }
-
-    verificarExpiracaoDoToken();
-  }, [])
+  };
 
   const handleLogin = async () => {
-    setContextLoading(true)
+    setContextLoading(true);
     try {
       const statusInternet = internetStatus();
       if (statusInternet) {
-        const response = await api.post('http://192.168.0.122:8080/auth/login', { login: login, senha: senha });
-        console.log('resp: ', response.data)
+        const response = await api.post('http://192.168.0.122:8080/auth/login', {
+          login: login,
+          senha: senha,
+        });
+        console.log('resp: ', response.data);
         await SecureStore.deleteItemAsync('token');
         await SecureStore.deleteItemAsync('id');
         await SecureStore.deleteItemAsync('nivelAcesso');
@@ -57,23 +52,19 @@ export default function Login({ navigation }) {
         await SecureStore.setItemAsync('nome', response.data.nome);
 
         VerificarSeExisteImportada();
-
       } else {
         Alert.alert(
           'Atenção',
           'Não há conexão com a internet. Não foi possível fazer login.',
-          [
-            { text: 'OK', onPress: () => { }, style: 'cancel' },
-          ],
+          [{ text: 'OK', onPress: () => {}, style: 'cancel' }]
         );
       }
-
     } catch (error) {
-      console.log("Erro no login: ", error);
+      console.log('Erro no login: ', error);
     } finally {
       setContextLoading(false);
     }
-  }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -82,10 +73,13 @@ export default function Login({ navigation }) {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
-          <Image
-            source={require('../../../assets/logo.png')}
-            style={{ width: 200, height: 200 }}
-            resizeMode="contain"
+          <Animated.Image
+            source={require('../../../assets/logo-inicio.png')}
+            style={{
+              width: 200,
+              height: 200,
+              resizeMode: 'contain',
+            }}
           />
           <View style={styles.iconContainer}>
             <Icon name="user" size={50} color="#000" />
@@ -134,12 +128,11 @@ const styles = StyleSheet.create({
   input: {
     width: '80%',
     height: 40,
-    borderWidth: 1,
-    borderColor: '#ccc',
     marginBottom: 16,
+    borderBottomWidth: 1,
     paddingHorizontal: 8,
-    borderRadius: 4,
-    backgroundColor: '#fff',
+    borderColor: '#ccc',
+    fontSize: 16,
   },
   iconContainer: {
     width: 80,
@@ -152,6 +145,10 @@ const styles = StyleSheet.create({
   },
   botaoEntrar: {
     backgroundColor: '#2196F3',
+    width: '80%',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingLeft: 30,
     paddingRight: 30,
     paddingTop: 8,

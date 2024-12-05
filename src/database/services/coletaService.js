@@ -180,7 +180,6 @@ export const fetchProdutosQueTiveramColetas = async () => {
         `);
         return response;
     } catch (error) {
-        console.log("Erro ao buscar produtos que tiveram coletas");
         throw error;
     }
 }

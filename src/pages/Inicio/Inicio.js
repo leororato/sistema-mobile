@@ -54,62 +54,53 @@ export default function Inicio({ navigation }) {
         }
     };
 
-    const handleImportarContinuacaoColeta = async (idPackinglist) => {
-        const statusInternet = internetStatus();
-
-        try {
-
-            if (statusInternet) {
-
-
-
-            } else {
-                Alert.alert(
-                    'Atenção',
-                    'Não há conexão com a internet. Não foi possível baixar a packinglist.',
-                    [
-                        { text: 'OK', onPress: () => { }, style: 'cancel' },
-                    ],
-                );
-            }
-
-
-        } catch (error) {
-
-        }
-    }
-
-    const handleImportarNovaColeta = async () => {
-
-    }
-
     const mostrarAlerta = (message, options) => {
         return new Promise((resolve) => {
             Alert.alert(
                 "Está lista já possui coletas realizadas.",
                 message,
                 [
-                    { text: 'Cancelar', onPress: () => { }, style:"cancel" },
+                    { text: 'Cancelar', onPress: () => { }, style: "cancel" },
                     { text: 'Iniciar nova', onPress: () => resolve('nova') },
                     { text: 'Continuar', onPress: () => resolve('continuar') },
                 ]
             );
         });
     };
-    
+
     const importar = async (idPackinglist, tipoDeImportacao) => {
         const statusInternet = internetStatus();
         const nomeTelefone = deviceName;
         console.log('nomeTel: ', nomeTelefone)
         try {
             if (statusInternet) {
-                const response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+                let response = [];
+
+                const verificacaoSeExisteColeta = await api.get(`/coletas/verificar-existencia-coleta/${idPackinglist}`)
+                
+                if (verificacaoSeExisteColeta.data === true) {
+                    const tipoDeImportacaoResposta = await mostrarAlerta(
+                        "Você deseja iniciar uma nova coleta ou continuar da onde parou?"
+                    );
+
+                    tipoDeImportacao = tipoDeImportacaoResposta;
+
+                } else {
+                    response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+                }
+
+                if (tipoDeImportacao === "nova") {
+                    response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
+                } else if (tipoDeImportacao === "continuar") {
+                    response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/continuar-importacao/${idPackinglist}/${nomeTelefone}`)
+                }
+
                 const packingList = response.data.packingListImportacaoMobile;
-                const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
-                const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
-                const volumeArray = response.data.volumeImportacaoMobile;
-                const coletaArray = response.data.coletaImportacaoMobile;
-    
+                    const packingListProdutoArray = response.data.packingListProdutoImportacaoMobile;
+                    const volumeProdutoArray = response.data.volumeProdutoImportacaoMobile;
+                    const volumeArray = response.data.volumeImportacaoMobile;
+                    const coletaArray = response.data.coletaImportacaoMobile;
+
                 const packingListImportar = {
                     idPackinglist: packingList.idPackinglist,
                     nomeImportador: packingList.nomeImportador,
@@ -117,22 +108,9 @@ export default function Inicio({ navigation }) {
                     pesoBrutoTotal: packingList.pesoBrutoTotal,
                     numeroColetas: packingList.numeroColetas
                 };
-                console.log('nomeTelArray: ', coletaArray[0].nomeTelefone)
-    
-                if (coletaArray.length > 0 && coletaArray[0].nomeTelefone === nomeTelefone) {
-                    const tipoDeImportacaoResposta = await mostrarAlerta(
-                        "Você deseja iniciar uma nova coleta ou continuar da onde parou?"
-                    );
-                    tipoDeImportacao = tipoDeImportacaoResposta;
-                    if (tipoDeImportacao === "nova") {
-                        // Lógica para iniciar uma nova coleta
-                    } else if (tipoDeImportacao === "continuar") {
-                        // Lógica para continuar
-                    }
-                }
-    
+
                 await insertPackingList(packingListImportar);
-    
+
                 await Promise.all(
                     packingListProdutoArray.map(async (packingListProduto) => {
                         const packingListProdutoImportar = {
@@ -149,7 +127,7 @@ export default function Inicio({ navigation }) {
                         await insertPackingListProduto(packingListProdutoImportar);
                     })
                 );
-    
+
                 await Promise.all(
                     volumeProdutoArray.map(async (volumeProduto) => {
                         const volumeProdutoImportar = {
@@ -164,7 +142,7 @@ export default function Inicio({ navigation }) {
                         await insertVolumesProdutos(volumeProdutoImportar);
                     })
                 );
-    
+
                 await Promise.all(
                     volumeArray.map(async (volume) => {
                         const volumeImportar = {
@@ -178,7 +156,7 @@ export default function Inicio({ navigation }) {
                         await insertVolume(volumeImportar);
                     })
                 );
-    
+
                 if (tipoDeImportacao === "continuar") {
                     await Promise.all(
                         coletaArray.map(async (coleta) => {
@@ -197,7 +175,7 @@ export default function Inicio({ navigation }) {
                         })
                     );
                 }
-    
+
                 Alert.alert(
                     "Importação completa",
                     'Packinglist baixada com sucesso!',
@@ -219,7 +197,7 @@ export default function Inicio({ navigation }) {
             console.log('Erro ao buscar PackingList: ', error);
         }
     };
-    
+
 
     const handleImportarPackinglist = async (idPackinglist) => {
         const packinglist = await fetchPackingListPorId(idPackinglist);
@@ -270,8 +248,6 @@ export default function Inicio({ navigation }) {
         await fetchPackinglistsInicio();
         setRefreshing(false);
     };
-
-
 
     return (
         <View style={{ backgroundColor: '#e4ffee', flex: 1, justifyContent: 'space-between' }}>

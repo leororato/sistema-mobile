@@ -15,7 +15,8 @@ import { format } from "date-fns";
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import ColetaSemPl from "./ColetaSemPl";
-import { fetchTodasColetasDeletadas, insertDeletarColeta } from "../../database/services/itensDeletarService";
+import { deletarTodosItensDeletados, fetchTodasColetasDeletadas, insertDeletarColeta } from "../../database/services/itensDeletarService";
+import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus";
 
 export default function Coleta({ navigation }) {
 
@@ -96,15 +97,17 @@ export default function Coleta({ navigation }) {
             if (!verificacaSeProdutoSelecionado) {
                 const response = await fetchColetasMaisRecentes();
                 setItensColetados(response);
-
             } else {
-
                 const response = await fetchItensColetadosDeUmProduto(produtoSelecionado.idPackinglist, produtoSelecionado.idProduto, produtoSelecionado.seq);
                 setItensColetados(response);
             }
 
         } catch (error) {
-            console.log('Erro ao buscar lista:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro ao buscar lista.",
+                [{ text: "OK" }]
+            );
         }
     }
 
@@ -129,7 +132,11 @@ export default function Coleta({ navigation }) {
             setItensColetados(response);
 
         } catch (error) {
-            console.log('Erro ao buscar listas:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro ao buscar listas do produto que foi coletado.",
+                [{ text: "OK" }]
+            );
         }
     }
 
@@ -154,7 +161,11 @@ export default function Coleta({ navigation }) {
             setItensNaoColetados(response);
 
         } catch (error) {
-            console.log('Erro ao buscar lista:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro ao buscar listas dos itens não coletados do produto que foi coletado.",
+                [{ text: "OK" }]
+            );
         }
     }
 
@@ -181,7 +192,11 @@ export default function Coleta({ navigation }) {
 
 
         } catch (error) {
-            console.log('Erro ao buscar lista:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro: " + error.message,
+                [{ text: "OK" }]
+            );
         }
     }
 
@@ -200,7 +215,11 @@ export default function Coleta({ navigation }) {
             return quantidadesColeta;
 
         } catch (error) {
-            console.log('Erro ao buscar coletas do produto:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro ao buscar coletas do produto: " + error?.message,
+                [{ text: "OK" }]
+            );
         }
     }
 
@@ -341,6 +360,10 @@ export default function Coleta({ navigation }) {
 
                     const response = await fetchDescricaoVolume(idVolume);
 
+                    // exportando a coleta logo apos a coleta
+                    exportarColetas();
+
+
                     const descricaoVolume = response[0]?.descricao;
 
                     if (descricaoVolume) {
@@ -360,7 +383,11 @@ export default function Coleta({ navigation }) {
 
 
         } catch (error) {
-            console.log('Erro ao coletar item:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro ao coletar item: " + error?.message,
+                [{ text: "OK" }]
+            );
 
         }
 
@@ -401,13 +428,12 @@ export default function Coleta({ navigation }) {
                 coleta[0].nomeTelefone,
                 item.dataHoraColeta,
             ]
-            
+
             await insertDeletarColeta(itemParaDeletar)
             await deletarColetaPorIdColeta(item.idColeta);
             await fetchColetados();
             await fetchListaProdutos();
             await Alert.alert(
-                "",
                 "Coleta excluida com sucesso",
                 [
                     {
@@ -417,15 +443,50 @@ export default function Coleta({ navigation }) {
                 { cancelable: false }
             );
 
-            const response = await fetchTodasColetasDeletadas();
-            console.log('todositens: ', response)
-            
-
 
         } catch (error) {
-            console.log('Erro ao excluir coleta:', error.message);
+            Alert.alert(
+                "Atenção",
+                "Erro ao excluir coleta: " + error?.message,
+                [{ text: "OK" }]
+            );
+
         }
     }
+
+    const exportarColetas = async () => {
+        try {
+            const statusInternet = await internetStatus();
+            if (statusInternet) {
+                const coletasRealizadas = await fetchColetasParaExportacao();
+                const coletasDeletadas = await fetchTodasColetasDeletadas();
+
+                const coletaExportacaoRequest = {
+                    "coletaDTO": coletasRealizadas,
+                    "coletaDeletadasDTO": coletasDeletadas
+                };
+
+                await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
+                await deletarTodosItensDeletadoseletados();
+                Alert.alert(
+                    "Packinglist enviada com sucesso.",
+                    '',
+                    [{
+                        text: 'Ok', onPress: () => { }
+                    }]
+                );
+            } else {
+                return;
+            }
+
+        } catch (error) {
+            if (error.response && error.response.data) {
+                Alert.alert('Erro', error.response.data.message || 'Erro desconhecido ao exportar coletas.');
+            } else {
+                Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
+            }
+        }
+    };
 
     useEffect(() => {
         if (scanned) {
@@ -476,21 +537,25 @@ export default function Coleta({ navigation }) {
         });
     };
 
-    const handlePressReloadListas = () => {
-        startRotation();
-        handleReloadListas();
-    };
-
     const rotation = rotateAnim.interpolate({
         inputRange: [0, 1],
         outputRange: ['0deg', '360deg'],
     });
 
     const handleReloadListas = () => {
+        startRotation();
+        reloadListas();
+    }
+
+    const reloadListas = async () => {
         setSelecionado("coletados");
+        setVerificacaoSeProdutoSelecionado(false);
+        setItensColetados([]);
         setItensNaoColetados([]);
         setProdutoSelecionado({ idPackinglist: null, idProduto: null, seq: null });
-        setVerificacaoSeProdutoSelecionado(false)
+
+        const response = await fetchColetasMaisRecentes();
+        setItensColetados(response);
     };
 
     const moverBarra = (posicao) => {
@@ -509,7 +574,6 @@ export default function Coleta({ navigation }) {
         }
     }, [selecionado]);
 
-    // interpolação da posição da barra
     const posicaoBarra = animacao.interpolate({
         inputRange: [0, 1],
         outputRange: ['0%', '50%'],
@@ -517,143 +581,143 @@ export default function Coleta({ navigation }) {
 
 
     return (
-            <View style={{ flex: 1, backgroundColor: '#e4ffee', }} >
-                <View style={styles.containerConferencia}>
-                    <View style={styles.containerCameraConferencia}>
-                        <View style={{ display: 'flex', width: '100%', height: '100%' }}>
-                            <BarCodeScanner
-                                onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-                                style={styles.cameraConferencia}
-                            >
-                                <Animatable.View
-                                    animation="slideInDown"
-                                    iterationCount="infinite"
-                                    direction="alternate"
-                                    style={styles.scanLine}
-                                />
-                            </BarCodeScanner>
+        <View style={{ flex: 1, backgroundColor: '#e4ffee', }} >
+            <View style={styles.containerConferencia}>
+                <View style={styles.containerCameraConferencia}>
+                    <View style={{ display: 'flex', width: '100%', height: '100%' }}>
+                        <BarCodeScanner
+                            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+                            style={styles.cameraConferencia}
+                        >
+                            <Animatable.View
+                                animation="slideInDown"
+                                iterationCount="infinite"
+                                direction="alternate"
+                                style={styles.scanLine}
+                            />
+                        </BarCodeScanner>
 
-                        </View>
                     </View>
+                </View>
 
-                    <View style={{ width: '100%', display: 'flex', alignItems: 'center', marginTop: Platform.OS == 'ios' ? 0 : -80 }}>
-                        <View style={{ width: '80%' }}>
-                            {listaProdutos.map((item, index) => (
-                                <TouchableOpacity
-                                    key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`}
+                <View style={{ width: '100%', display: 'flex', alignItems: 'center', marginTop: Platform.OS == 'ios' ? 0 : -80 }}>
+                    <View style={{ width: '80%' }}>
+                        {listaProdutos.map((item, index) => (
+                            <TouchableOpacity
+                                key={`${item.idPackinglist}-${item.idProduto}-${item.seq}-${index}`}
+                                style={[
+                                    styles.produtoColetado,
+                                    {
+                                        marginBottom: 10,
+                                        borderColor: item.borderColor,
+                                        backgroundColor:
+                                            produtoSelecionado?.idPackinglist === item.idPackinglist &&
+                                                produtoSelecionado?.idProduto === item.idProduto &&
+                                                produtoSelecionado?.seq === item.seq
+                                                ? item.borderColor
+                                                : 'white',
+                                    },
+                                ]}
+                                onPress={() => {
+                                    buscarListaDeColetadosOuNaoColetadosDeUmProduto(
+                                        item.idPackinglist,
+                                        item.idProduto,
+                                        item.seq
+                                    );
+                                    setProdutoSelecionado({
+                                        idPackinglist: item.idPackinglist,
+                                        idProduto: item.idProduto,
+                                        seq: item.seq,
+                                    });
+                                    setVerificacaoSeProdutoSelecionado(true);
+                                }}
+                            >
+                                <Text
+                                    style={{
+                                        fontWeight:
+                                            produtoSelecionado?.idPackinglist === item.idPackinglist &&
+                                                produtoSelecionado?.idProduto === item.idProduto &&
+                                                produtoSelecionado?.seq === item.seq
+                                                ? 'bold'
+                                                : 'normal',
+                                        flexWrap: 'wrap',
+                                        width: '100%',
+                                        lineHeight: 20,
+                                        textAlign: 'left',
+                                    }}
+                                    numberOfLines={0}
+                                >
+                                    {item.ordemProducao} / {item.descricaoProduto}: [{item.quantidadeColetada}/
+                                    {item.quantidadeTotalDeVolumes}]
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                </View>
+
+
+                <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+
+                    <View style={styles.containerToutchable}>
+                        <View style={styles.containerBotaoRecarregar}>
+                            <View style={selecionado === 'coletados' || selecionado === 'naoColetados' ? styles.botoesContainer : styles.botoesContainerNenhumSelecionado}>
+                                <Animated.View
                                     style={[
-                                        styles.produtoColetado,
-                                        {
-                                            marginBottom: 10,
-                                            borderColor: item.borderColor,
-                                            backgroundColor:
-                                                produtoSelecionado?.idPackinglist === item.idPackinglist &&
-                                                    produtoSelecionado?.idProduto === item.idProduto &&
-                                                    produtoSelecionado?.seq === item.seq
-                                                    ? item.borderColor
-                                                    : 'white',
-                                        },
+                                        styles.barraFundo,
+                                        { left: posicaoBarra },
                                     ]}
+                                />
+
+                                <TouchableOpacity
+                                    style={styles.botao}
                                     onPress={() => {
-                                        buscarListaDeColetadosOuNaoColetadosDeUmProduto(
-                                            item.idPackinglist,
-                                            item.idProduto,
-                                            item.seq
-                                        );
-                                        setProdutoSelecionado({
-                                            idPackinglist: item.idPackinglist,
-                                            idProduto: item.idProduto,
-                                            seq: item.seq,
-                                        });
-                                        setVerificacaoSeProdutoSelecionado(true);
+                                        setSelecionado('coletados');
+                                        fetchColetados();
                                     }}
                                 >
-                                    <Text
-                                        style={{
-                                            fontWeight:
-                                                produtoSelecionado?.idPackinglist === item.idPackinglist &&
-                                                    produtoSelecionado?.idProduto === item.idProduto &&
-                                                    produtoSelecionado?.seq === item.seq
-                                                    ? 'bold'
-                                                    : 'normal',
-                                            flexWrap: 'wrap',
-                                            width: '100%',
-                                            lineHeight: 20,
-                                            textAlign: 'left',
-                                        }}
-                                        numberOfLines={0}
-                                    >
-                                        {item.ordemProducao} / {item.descricaoProduto}: [{item.quantidadeColetada}/
-                                        {item.quantidadeTotalDeVolumes}]
-                                    </Text>
+                                    <Text style={styles.textoBotao}>Coletados</Text>
                                 </TouchableOpacity>
-                            ))}
+
+                                <TouchableOpacity
+                                    style={styles.botao}
+                                    onPress={() => {
+                                        setSelecionado('naoColetados');
+                                        fetchVolumesNaoColetados();
+                                    }}
+                                >
+                                    <Text style={styles.textoBotao}>Não coletados</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <TouchableOpacity onPress={() => deletarTodasColetas() && fetchColetados() && fetchListaProdutos()}><Text>reset</Text></TouchableOpacity>
+                            <TouchableOpacity onPress={handleReloadListas}>
+                                <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+                                    <Icon name="reload1" size={30} color="#000" />
+                                </Animated.View>
+                            </TouchableOpacity>
                         </View>
+
+                        <View style={styles.table}>
+                            <View style={styles.header}>
+                                <Text style={styles.headerCell}>Seq</Text>
+                                <Text style={styles.headerCell}>Descrição</Text>
+                                <Text style={styles.headerCell}>DT/HR</Text>
+                            </View>
+                            <FlatList
+                                data={itensColetados.length > 0 ? itensColetados : itensNaoColetados}
+                                renderItem={renderVolumes}
+                                keyExtractor={(item, index) => `${item.idColeta}-${index}`}
+                                contentContainerStyle={{ paddingBottom: 60 }}
+                            />
+                        </View>
+
                     </View>
+                </TouchableWithoutFeedback>
 
 
-                    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-
-                        <View style={styles.containerToutchable}>
-                            <View style={styles.containerBotaoRecarregar}>
-                                <View style={selecionado === 'coletados' || selecionado === 'naoColetados' ? styles.botoesContainer : styles.botoesContainerNenhumSelecionado}>
-                                    <Animated.View
-                                        style={[
-                                            styles.barraFundo,
-                                            { left: posicaoBarra },
-                                        ]}
-                                    />
-
-                                    <TouchableOpacity
-                                        style={styles.botao}
-                                        onPress={() => {
-                                            setSelecionado('coletados');
-                                            fetchColetados();
-                                        }}
-                                    >
-                                        <Text style={styles.textoBotao}>Coletados</Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity
-                                        style={styles.botao}
-                                        onPress={() => {
-                                            setSelecionado('naoColetados');
-                                            fetchVolumesNaoColetados();
-                                        }}
-                                    >
-                                        <Text style={styles.textoBotao}>Não coletados</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                <TouchableOpacity onPress={() => deletarTodasColetas() && fetchColetados() && fetchListaProdutos()}><Text>reset</Text></TouchableOpacity>
-                                <TouchableOpacity onPress={handlePressReloadListas}>
-                                    <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-                                        <Icon name="reload1" size={30} color="#000" />
-                                    </Animated.View>
-                                </TouchableOpacity>
-                            </View>
-
-                            <View style={styles.table}>
-                                <View style={styles.header}>
-                                    <Text style={styles.headerCell}>Seq</Text>
-                                    <Text style={styles.headerCell}>Descrição</Text>
-                                    <Text style={styles.headerCell}>DT/HR</Text>
-                                </View>
-                                <FlatList
-                                    data={itensColetados.length > 0 ? itensColetados : itensNaoColetados}
-                                    renderItem={renderVolumes}
-                                    keyExtractor={(item, index) => `${item.idColeta}-${index}`}
-                                    contentContainerStyle={{ paddingBottom: 60 }}
-                                />
-                            </View>
-
-                        </View>
-                    </TouchableWithoutFeedback>
-
-
-                    <BarraFooter navigation={navigation} />
-                </View>
-            </View >
+                <BarraFooter navigation={navigation} />
+            </View>
+        </View >
     );
 };
 
