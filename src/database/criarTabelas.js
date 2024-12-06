@@ -62,27 +62,29 @@ export const createTable_mv_coleta = async () => {
     try {
         await db.execAsync(`
             CREATE TABLE IF NOT EXISTS mv_coleta (
-            idColeta INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            idPackinglist BIGINT NOT NULL,
-            idProduto BIGINT NOT NULL,
-            seq BIGINT NOT NULL,
-            idVolume BIGINT NOT NULL,
-            idVolumeProduto BIGINT NOT NULL,
-            idUsuario BIGINT,
-            nomeTelefone VARCHAR NOT NULL,
-            dataHoraColeta TIMESTAMP,
-            dataHoraImportacao TIMESTAMP,
-            FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),
-            FOREIGN KEY (idProduto, seq, idPackinglist) REFERENCES mv_packinglist_produto (idProduto, seq, idPackinglist),
-            FOREIGN KEY (idVolumeProduto, idPackinglist, idProduto, seq, idVolume) REFERENCES mv_volumes_produto (idVolumeProduto, idPackinglist, idProduto, seq, idVolume),
-            FOREIGN KEY (idUsuario) REFERENCES mv_usuario (id)
+                idColeta INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                idPackinglist BIGINT NOT NULL,
+                idProduto BIGINT NOT NULL,
+                seq BIGINT NOT NULL,
+                idVolume BIGINT NOT NULL,
+                idVolumeProduto BIGINT NOT NULL,
+                idUsuario BIGINT,
+                nomeTelefone VARCHAR NOT NULL,
+                dataHoraColeta TIMESTAMP,
+                dataHoraImportacao TIMESTAMP,
+                statusExportacao TINYINT DEFAULT 0, -- Nova coluna adicionada
+                FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),
+                FOREIGN KEY (idProduto, seq, idPackinglist) REFERENCES mv_packinglist_produto (idProduto, seq, idPackinglist),
+                FOREIGN KEY (idVolumeProduto, idPackinglist, idProduto, seq, idVolume) REFERENCES mv_volumes_produto (idVolumeProduto, idPackinglist, idProduto, seq, idVolume),
+                FOREIGN KEY (idUsuario) REFERENCES mv_usuario (id)
             );
-        `)
-        console.log("Tabela mv_coleta criada com sucesso.");
+        `);
+        console.log("Tabela mv_coleta criada ou alterada com sucesso.");
     } catch (error) {
-        console.error("Erro ao criar tabela mv_coleta:", error);
+        console.error("Erro ao criar ou alterar tabela mv_coleta:", error);
     }
-}
+};
+
 
 export const createTable_mv_tipo_volume = async () => {
     const db = await getDBConnection();

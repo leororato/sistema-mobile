@@ -10,6 +10,7 @@ import { insertVolume } from "../../database/services/volumeService.js";
 import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
 import { insertColeta } from "../../database/services/coletaService.js";
 import { deviceName } from "expo-device";
+import * as SecureStore from 'expo-secure-store';
 
 export default function Inicio({ navigation }) {
 
@@ -18,6 +19,7 @@ export default function Inicio({ navigation }) {
 
     const { height } = Dimensions.get('window');
 
+    const idUsuario = SecureStore.getItem("id");
 
     useEffect(() => {
         const VerificarSeExisteImportada = async () => {
@@ -92,7 +94,7 @@ export default function Inicio({ navigation }) {
                 if (tipoDeImportacao === "nova") {
                     response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/${idPackinglist}`);
                 } else if (tipoDeImportacao === "continuar") {
-                    response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/continuar-importacao/${idPackinglist}/${nomeTelefone}`)
+                    response = await api.get(`/mobile-importacao/buscar-packinglist-inteira/continuar-importacao/${idPackinglist}/${idUsuario}/${nomeTelefone}`)
                 }
 
                 const packingList = response.data.packingListImportacaoMobile;

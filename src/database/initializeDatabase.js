@@ -7,6 +7,7 @@ export default function initializeDatabase() {
     }
 
 
+
     const initializeDB = async () => {
         await createTable_mv_usuario();
         await createTable_mv_tipo_volume();

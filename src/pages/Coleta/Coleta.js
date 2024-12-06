@@ -5,7 +5,7 @@ import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useRoute } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/AntDesign'
 import * as Animatable from 'react-native-animatable';;
-import { conferirSeJaFoiColetado, deletarColetaPorId, deletarColetaPorIdColeta, deletarColetaPorIdPackinglistAndIdProdutoAndSeq, deletarTodasColetas, fetchColetaPorIdColeta, fetchColetaPorIdPackinglistAndIdProdutoAndSeq, fetchColetas, fetchColetasMaisRecentes, fetchColetasPorProduto, fetchItensColetadosDeUmProduto, fetchNaoColetados, fetchNaoColetadosPorProduto, fetchProdutosQueTiveramColetas, insertColeta } from "../../database/services/coletaService";
+import { conferirSeJaFoiColetado, deletarColetaPorIdColeta, deletarTodasColetas, fetchColetaPorIdColeta, fetchColetasMaisRecentes, fetchColetasParaExportacao, fetchColetasPorProduto, fetchItensColetadosDeUmProduto, fetchNaoColetados, fetchNaoColetadosPorProduto, fetchProdutosQueTiveramColetas, insertColeta, updateSituacaoEnvio, updateStatusExportacao, verificarStatusExportacao } from "../../database/services/coletaService";
 import { fetchPackingListProdutos } from "../../database/services/packingListProdutoService";
 import { fetchQuantidadeVolumesProdutosDeUmProduto } from "../../database/services/volumeProdutoService";
 import { fetchDescricaoVolume } from "../../database/services/volumeService";
@@ -17,6 +17,7 @@ import * as Device from 'expo-device';
 import ColetaSemPl from "./ColetaSemPl";
 import { deletarTodosItensDeletados, fetchTodasColetasDeletadas, insertDeletarColeta } from "../../database/services/itensDeletarService";
 import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus";
+import api from "../../../axiosConfig.js";
 
 export default function Coleta({ navigation }) {
 
@@ -31,6 +32,8 @@ export default function Coleta({ navigation }) {
     const [existePlImportada, setExistePlImportada] = useState(false)
 
     const [listaProdutos, setListaProdutos] = useState([]);
+
+    const [statusExportacao, setStatusExportacao] = useState(null);
 
     const [selecionado, setSelecionado] = useState("coletados");
     const animacao = useRef(new Animated.Value(0)).current;
@@ -65,6 +68,11 @@ export default function Coleta({ navigation }) {
         setIdUsuario(id);
     }
 
+    const getStatusExportacao = async () => {
+        const response = await verificarStatusExportacao();
+        setStatusExportacao(response);
+    }
+
     // roda a permissao e chama funçao para exibir os produtos que foram importados, aparecendo no topo da tela
     useEffect(() => {
 
@@ -81,7 +89,7 @@ export default function Coleta({ navigation }) {
         verificacaoPlImportada();
 
         getDeviceInfo();
-
+        getStatusExportacao();
         getId();
         getBarCodeScannerPermissoes();
 
@@ -101,6 +109,8 @@ export default function Coleta({ navigation }) {
                 const response = await fetchItensColetadosDeUmProduto(produtoSelecionado.idPackinglist, produtoSelecionado.idProduto, produtoSelecionado.seq);
                 setItensColetados(response);
             }
+
+            getStatusExportacao();
 
         } catch (error) {
             Alert.alert(
@@ -130,6 +140,7 @@ export default function Coleta({ navigation }) {
 
             const response = await fetchItensColetadosDeUmProduto(idPackinglist, idProduto, seq);
             setItensColetados(response);
+            getStatusExportacao();
 
         } catch (error) {
             Alert.alert(
@@ -159,6 +170,7 @@ export default function Coleta({ navigation }) {
 
             const response = await fetchNaoColetadosPorProduto(idPackinglist, idProduto, seq);
             setItensNaoColetados(response);
+            getStatusExportacao();
 
         } catch (error) {
             Alert.alert(
@@ -189,6 +201,7 @@ export default function Coleta({ navigation }) {
                     setItensNaoColetados(response);
                 }
             }
+            getStatusExportacao();
 
 
         } catch (error) {
@@ -211,6 +224,7 @@ export default function Coleta({ navigation }) {
                 quantidadeColetada: quantidadeColetada,
                 quantidadeTotalDeVolumes: quantidadeTotalDeVolumes
             }
+            getStatusExportacao();
 
             return quantidadesColeta;
 
@@ -241,6 +255,9 @@ export default function Coleta({ navigation }) {
                 setItensNaoColetados(response);
             }
         }
+
+        getStatusExportacao();
+
     }
 
     // funçao que buscam os produtos que houveram coletas para exibir no topo da tela
@@ -434,6 +451,7 @@ export default function Coleta({ navigation }) {
             await fetchColetados();
             await fetchListaProdutos();
             await Alert.alert(
+                "Sucesso",
                 "Coleta excluida com sucesso",
                 [
                     {
@@ -442,6 +460,8 @@ export default function Coleta({ navigation }) {
                 ],
                 { cancelable: false }
             );
+
+            exportarColetas();
 
 
         } catch (error) {
@@ -453,6 +473,23 @@ export default function Coleta({ navigation }) {
 
         }
     }
+
+    const atualizarSituacoesEnvio = async (coletasRealizadas) => {
+        const promessas = await coletasRealizadas.map((coleta) =>
+            updateStatusExportacao(
+                coleta.idPackinglist,
+                coleta.idProduto,
+                coleta.seq,
+                coleta.idVolume,
+                coleta.idVolumeProduto,
+                coleta.idUsuario,
+                coleta.nomeTelefone,
+                coleta.dataHoraColeta,
+                1
+            )
+        );
+        await Promise.all(promessas);
+    };
 
     const exportarColetas = async () => {
         try {
@@ -467,7 +504,12 @@ export default function Coleta({ navigation }) {
                 };
 
                 await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
-                await deletarTodosItensDeletadoseletados();
+                console.log('coletaExportacaoRequest')
+                await deletarTodosItensDeletados();
+                console.log('deletarTodosItensDeletados')
+
+                await atualizarSituacoesEnvio(coletasRealizadas);
+                console.log('atualizarSituacoesEnvio')
                 Alert.alert(
                     "Packinglist enviada com sucesso.",
                     '',
@@ -480,8 +522,8 @@ export default function Coleta({ navigation }) {
             }
 
         } catch (error) {
-            if (error.response && error.response.data) {
-                Alert.alert('Erro', error.response.data.message || 'Erro desconhecido ao exportar coletas.');
+            if (error?.response && error?.response?.data) {
+                Alert.alert('Erro', error?.response?.data?.message || 'Erro desconhecido ao exportar coletas.');
             } else {
                 Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
             }
@@ -489,6 +531,7 @@ export default function Coleta({ navigation }) {
     };
 
     useEffect(() => {
+
         if (scanned) {
             setTimeout(() => {
                 setScanned(false);
@@ -582,6 +625,28 @@ export default function Coleta({ navigation }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#e4ffee', }} >
+            <View style={{ width: '100%', justifyContent: 'flex-end', alignItems: 'flex-end', padding: 0, position: 'absolute', marginTop: 50, paddingRight: 20 }}>
+                <View
+                    style={{
+                        width: 80,
+                        height: 80,
+                        borderColor: '#000',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                    }}>
+                    {statusExportacao ? (
+                        <View>
+                            <Icon name="cloudupload" size={40} color={"#30c4c9"} />
+                        </View>
+                    ) : (
+                        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="clouduploado" size={40} color={"#30c4c9"} />
+                        </View>
+                    )}
+
+                </View>
+            </View>
+
             <View style={styles.containerConferencia}>
                 <View style={styles.containerCameraConferencia}>
                     <View style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -596,11 +661,12 @@ export default function Coleta({ navigation }) {
                                 style={styles.scanLine}
                             />
                         </BarCodeScanner>
-
                     </View>
                 </View>
 
+
                 <View style={{ width: '100%', display: 'flex', alignItems: 'center', marginTop: Platform.OS == 'ios' ? 0 : -80 }}>
+
                     <View style={{ width: '80%' }}>
                         {listaProdutos.map((item, index) => (
                             <TouchableOpacity
@@ -689,7 +755,8 @@ export default function Coleta({ navigation }) {
                                 </TouchableOpacity>
                             </View>
 
-                            <TouchableOpacity onPress={() => deletarTodasColetas() && fetchColetados() && fetchListaProdutos()}><Text>reset</Text></TouchableOpacity>
+
+                            {/* <TouchableOpacity onPress={() => deletarTodasColetas() && fetchColetados() && fetchListaProdutos()}><Text>reset</Text></TouchableOpacity> */}
                             <TouchableOpacity onPress={handleReloadListas}>
                                 <Animated.View style={{ transform: [{ rotate: rotation }] }}>
                                     <Icon name="reload1" size={30} color="#000" />
@@ -793,7 +860,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         flexDirection: 'row',
-        backgroundColor: '#ddd',
+        backgroundColor: '#9CD591',
         padding: 10,
     },
     headerCell: {

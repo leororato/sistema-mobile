@@ -28,6 +28,38 @@ export const insertColeta = async (data) => {
     }
 };
 
+export const updateStatusExportacao = async (idColeta, novoStatus) => {
+    const db = await getDBConnection();
+    try {
+        const query = `
+           UPDATE mv_coleta
+            SET statusExportacao = ?
+            WHERE idPackinglist = ?
+            AND idProduto = ?
+            AND seq = ?
+            AND idVolume = ?
+            AND idVolumeProduto = ?
+            AND idUsuario = ?
+            AND nomeTelefone = ?
+            AND dataHoraColeta = ?
+        `;
+        await db.execAsync(query, [novoStatus, idColeta]);
+    } catch (error) {
+        console.error("Erro ao atualizar statusExportacao:", error);
+    }
+};
+
+export const alterarTabelaMvColeta = async () => {
+    const db = await getDBConnection();
+    try {
+        await db.execAsync(`
+            ALTER TABLE mv_coleta
+            ADD COLUMN statusExportacao TINYINT DEFAULT 0;
+        `);
+    } catch (error) {
+        console.error("Erro ao alterar tabela mv_coleta:", error);
+    }
+};
 
 export const fetchColetas = async () => {
     const db = await getDBConnection();
@@ -50,6 +82,24 @@ export const fetchColetaPorIdColeta = async (idColeta) => {
         throw error;
     }
 };
+
+export const verificarStatusExportacao = async () => {
+    const db = await getDBConnection();
+    try {
+        const resposne = await db.getAllAsync('SELECT * FROM mv_coleta c WHERE c.statusExportacao = 0');
+        let statusExportacao;
+        if (resposne.length > 0) {
+            statusExportacao = true;
+        } else {
+            statusExportacao = false;
+        }
+        return statusExportacao;
+    } catch (error) {
+        console.error("Erro ao buscar coletas:", error);
+        throw error;
+    }
+};
+
 
 export const fetchColetasParaExportacao = async () => {
     const db = await getDBConnection();
@@ -95,8 +145,7 @@ export const fetchColetasMaisRecentes = async () => {
         `);
 
         return response;
-
-        } catch (error) {
+    } catch (error) {
         console.error("Erro ao buscar coletas:", error);
         throw error;
     }

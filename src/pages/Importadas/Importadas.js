@@ -7,7 +7,7 @@ import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPacki
 import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos, insertPackingListProduto } from "../../database/services/packingListProdutoService.js";
 import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos, insertVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes, insertVolume } from "../../database/services/volumeService.js";
-import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao, insertColeta } from "../../database/services/coletaService.js";
+import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao, insertColeta, updateStatusExportacao } from "../../database/services/coletaService.js";
 import api from "../../../axiosConfig.js";
 import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
 import { deletarTodosItensDeletados, fetchTodasColetasDeletadas } from "../../database/services/itensDeletarService.js";
@@ -70,6 +70,23 @@ export default function Importadas({ navigation }) {
         );
     }
 
+    const atualizarSituacoesEnvio = async (coletasRealizadas) => {
+        const promessas = coletasRealizadas.map((coleta) =>
+            updateStatusExportacao(
+                coleta.idPackinglist,
+                coleta.idProduto,
+                coleta.seq,
+                coleta.idVolume,
+                coleta.idVolumeProduto,
+                coleta.idUsuario,
+                coleta.nomeTelefone,
+                coleta.dataHoraColeta,
+                1
+            )
+        );
+        await Promise.all(promessas);
+    };
+
     const exportarColetas = async () => {
         try {
 
@@ -85,6 +102,9 @@ export default function Importadas({ navigation }) {
 
                 await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
                 await deletarTodosItensDeletados();
+
+                await atualizarSituacoesEnvio(coletasRealizadas);
+
                 Alert.alert(
                     "Packinglist enviada com sucesso.",
                     '',
@@ -144,6 +164,13 @@ export default function Importadas({ navigation }) {
         await deletarPackinglistPorId(idPackinglist);
         await deletarTodasColetas();
         await deletarTodosItensDeletados();
+
+        console.log('packinglist: ', await fetchPackingLists())
+        console.log('vp: ', await fetchVolumesProdutos())
+        console.log('ppp: ', await fetchPackingListProdutos())
+        console.log('coletas: ', await fetchColetas())
+        console.log('itens deletados: ', await fetchTodasColetasDeletadas())
+
 
         await buscarPackinglistsImportadas();
 
