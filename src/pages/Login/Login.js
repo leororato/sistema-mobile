@@ -22,6 +22,7 @@ export default function Login({ navigation }) {
   const [login, setLogin] = useState('');
   const [senha, setSenha] = useState('');
   const [contextLoading, setContextLoading] = useState(false);
+  const [contextErrorMessage, setContextErrorMessage] = useState(false);
 
   const VerificarSeExisteImportada = async () => {
     let rota;
@@ -56,11 +57,13 @@ export default function Login({ navigation }) {
         Alert.alert(
           'Atenção',
           'Não há conexão com a internet. Não foi possível fazer login.',
-          [{ text: 'OK', onPress: () => {}, style: 'cancel' }]
+          [{ text: 'OK', onPress: () => { }, style: 'cancel' }]
         );
       }
     } catch (error) {
-      console.log('Erro no login: ', error);
+      setContextErrorMessage(error?.response?.data);
+      console.log(error.response)
+
     } finally {
       setContextLoading(false);
     }
@@ -101,6 +104,12 @@ export default function Login({ navigation }) {
           value={senha}
           onChangeText={setSenha}
         />
+
+        {contextErrorMessage && (
+          <View style={{width: '80%', marginTop: -15}}>
+            <Text style={{ color: 'red' }}>{contextErrorMessage}*</Text>
+          </View>
+        )}
 
         {contextLoading ? (
           <ActivityIndicator size="large" color="#0000ff" />

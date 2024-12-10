@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Alert, Vibration, Keyboard, Animated, Easing } from "react-native";
 import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useRoute } from "@react-navigation/native";
-import Icon from 'react-native-vector-icons/AntDesign'
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
 import * as Animatable from 'react-native-animatable';;
 import { conferirSeJaFoiColetado, deletarColetaPorIdColeta, deletarTodasColetas, fetchColetaPorIdColeta, fetchColetasMaisRecentes, fetchColetasParaExportacao, fetchColetasPorProduto, fetchItensColetadosDeUmProduto, fetchNaoColetados, fetchNaoColetadosPorProduto, fetchProdutosQueTiveramColetas, insertColeta, updateSituacaoEnvio, updateStatusExportacao, verificarStatusExportacao } from "../../database/services/coletaService";
 import { fetchPackingListProdutos } from "../../database/services/packingListProdutoService";
@@ -38,6 +38,8 @@ export default function Coleta({ navigation }) {
     const [selecionado, setSelecionado] = useState("coletados");
     const animacao = useRef(new Animated.Value(0)).current;
     const rotateAnim = useRef(new Animated.Value(0)).current;
+    const rotateAnimReloadNuvem = useRef(new Animated.Value(0)).current;
+
 
     const [itensColetados, setItensColetados] = useState([]);
     const [itensNaoColetados, setItensNaoColetados] = useState([]);
@@ -569,6 +571,22 @@ export default function Coleta({ navigation }) {
         );
     };
 
+    const startRotationCloud = () => {
+        Animated.timing(rotateAnimReloadNuvem, {
+            toValue: 1,
+            duration: 1000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+        }).start(() => {
+            rotateAnimReloadNuvem.setValue(0);
+        });
+    };
+
+    const rotationReloadNuvem = rotateAnimReloadNuvem.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg'],
+    });
+
     const startRotation = () => {
         Animated.timing(rotateAnim, {
             toValue: 1,
@@ -601,6 +619,11 @@ export default function Coleta({ navigation }) {
         setItensColetados(response);
     };
 
+    const handleExportarCloud = () => {
+        startRotationCloud();
+        exportarColetas();
+    }
+
     const moverBarra = (posicao) => {
         Animated.timing(animacao, {
             toValue: posicao,
@@ -625,27 +648,34 @@ export default function Coleta({ navigation }) {
 
     return (
         <View style={{ flex: 1, backgroundColor: '#e4ffee', }} >
-            <View style={{ width: '100%', justifyContent: 'flex-end', alignItems: 'flex-end', padding: 0, position: 'absolute', marginTop: 50, paddingRight: 20 }}>
-                <View
-                    style={{
-                        width: 80,
-                        height: 80,
-                        borderColor: '#000',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
+            <View style={{ width: '100%', justifyContent: 'flex-end', alignItems: 'flex-end', padding: 0, position: 'absolute', marginTop: 50 }}>
+                <View style={{ width: 80, height: 80, borderColor: '#000', justifyContent: 'center', alignItems: 'center', }}>
                     {statusExportacao ? (
                         <View>
-                            <Icon name="cloudupload" size={40} color={"#30c4c9"} />
+                            <Icon name="cloud-check" size={40} color="#30c4c9" />
                         </View>
                     ) : (
-                        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Icon name="clouduploado" size={40} color={"#30c4c9"} />
-                        </View>
+                        <TouchableOpacity style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onPress={handleExportarCloud}>
+                            <Icon name="cloud-outline" size={40} color="#30c4c9" />
+                            <Animated.View
+                                style={{
+                                    position: 'absolute',
+                                    top: 16,
+                                    left: 22,
+                                    right: 0,
+                                    bottom: 0,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    transform: [{ rotate: rotationReloadNuvem }],
+                                }}
+                            >
+                                <Icon name="reload" size={20} color="black" style={{ backgroundColor: '#e4ffee', borderRadius: 50 }} />
+                            </Animated.View>
+                        </TouchableOpacity>
                     )}
-
                 </View>
             </View>
+
 
             <View style={styles.containerConferencia}>
                 <View style={styles.containerCameraConferencia}>
@@ -759,7 +789,7 @@ export default function Coleta({ navigation }) {
                             {/* <TouchableOpacity onPress={() => deletarTodasColetas() && fetchColetados() && fetchListaProdutos()}><Text>reset</Text></TouchableOpacity> */}
                             <TouchableOpacity onPress={handleReloadListas}>
                                 <Animated.View style={{ transform: [{ rotate: rotation }] }}>
-                                    <Icon name="reload1" size={30} color="#000" />
+                                    <Icon name="reload" size={30} color="#000" />
                                 </Animated.View>
                             </TouchableOpacity>
                         </View>
