@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
 const api = axios.create({
-  baseURL: 'http://192.168.0.122:8080/api',
+  baseURL: 'http://192.168.1.238:8080/api',
 });
 
 api.interceptors.request.use(

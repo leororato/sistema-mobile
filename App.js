@@ -6,7 +6,7 @@ import Inicio from './src/pages/Inicio/Inicio';
 import Importadas from './src/pages/Importadas/Importadas';
 import initializeDatabase from './src/database/initializeDatabase';
 import Coleta from './src/pages/Coleta/Coleta';
-import { Image } from 'react-native';
+import { Image, StatusBar } from 'react-native';
 import ColetaSemPl from './src/pages/Coleta/ColetaSemPl';
 import TelaDeCarregamento from './src/pages/TelaDeCarregamento/TelaDeCarregamento';
 import * as SecureStore from 'expo-secure-store';
@@ -86,6 +86,8 @@ export default function App() {
   }
 
   return (
+    <>
+    <StatusBar backgroundColor={"#1780e2"} barStyle={"light-content"}/>
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName={isAuthenticated ? "Inicio" : "Login"}>
         <Stack.Screen
@@ -180,5 +182,7 @@ export default function App() {
         navigationRef={navigationRef} // Passa o navigationRef como prop 
       />
     </NavigationContainer>
+    </>
+
   );
 }
