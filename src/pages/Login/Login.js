@@ -17,6 +17,7 @@ import * as SecureStore from 'expo-secure-store';
 import internetStatus from '../../components/VerificarConexaoComInternet/InternetStatus';
 import Icon from 'react-native-vector-icons/AntDesign';
 import { fetchPackingListsQuantidade } from '../../database/services/packingListService';
+import axios from 'axios';
 
 export default function Login({ navigation }) {
   const [login, setLogin] = useState('');
@@ -37,7 +38,7 @@ export default function Login({ navigation }) {
     try {
       const statusInternet = internetStatus();
       if (statusInternet) {
-        const response = await api.post('http://192.168.0.122:8080/auth/login', {
+        const response = await axios.post('http://192.168.0.122:8080/auth/login', {
           login: login,
           senha: senha,
         });
