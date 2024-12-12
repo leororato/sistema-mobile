@@ -21,5 +21,5 @@ export default function initializeDatabase() {
     };
 
     // excluirTabelas();
-     initializeDB();
+    initializeDB();
 }

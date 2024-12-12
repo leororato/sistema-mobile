@@ -1,6 +1,6 @@
 import { BarCodeScanner } from "expo-barcode-scanner";
 import { useEffect, useRef, useState } from "react";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Alert, Vibration, Keyboard, Animated, Easing } from "react-native";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, TouchableWithoutFeedback, Alert, Vibration, Keyboard, Animated, Easing, LogBox } from "react-native";
 import BarraFooter from "../../components/barraFooter/BarraFooter";
 import { useRoute } from "@react-navigation/native";
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
@@ -46,6 +46,10 @@ export default function Coleta({ navigation }) {
 
     const [produtoSelecionado, setProdutoSelecionado] = useState({ idPackinglist: null, idProduto: null, seq: null })
     const [verificacaSeProdutoSelecionado, setVerificacaoSeProdutoSelecionado] = useState(false);
+
+    if (__DEV__ === false) {
+        LogBox.ignoreAllLogs(false);
+    }
 
     // permissao utilizar para a camera
     const getBarCodeScannerPermissoes = async () => {
@@ -317,6 +321,8 @@ export default function Coleta({ navigation }) {
             const idVolumeProduto = dadosQrCode[4];
             const dataHoraColeta = new Date();
 
+            console.log('qrcode: ', dadosQrCode)
+
             const conferirSeAPackinglistEstaNoBanco = await fetchPackingListPorId(idPackinglist);
             const conferirSeExisteAlgumaPackinglistImportada = await fetchPackingLists();
 
@@ -377,10 +383,10 @@ export default function Coleta({ navigation }) {
                         await fetchNaoColetadosDoProdutoQueFoiColetado(idPackinglist, idProduto, seq);
                     }
 
-                    const response = await fetchDescricaoVolume(idVolume);
+                    // const response = await fetchDescricaoVolume(idVolume);
 
                     // exportando a coleta logo apos a coleta
-                    exportarColetas();
+                    // await exportarColetasSemAlerta();
 
 
                     const descricaoVolume = response[0]?.descricao;
@@ -506,12 +512,9 @@ export default function Coleta({ navigation }) {
                 };
 
                 await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
-                console.log('coletaExportacaoRequest')
                 await deletarTodosItensDeletados();
-                console.log('deletarTodosItensDeletados')
 
                 await atualizarSituacoesEnvio(coletasRealizadas);
-                console.log('atualizarSituacoesEnvio')
                 Alert.alert(
                     "Packinglist enviada com sucesso.",
                     '',
@@ -519,6 +522,36 @@ export default function Coleta({ navigation }) {
                         text: 'Ok', onPress: () => { }
                     }]
                 );
+            } else {
+                return;
+            }
+
+        } catch (error) {
+            if (error?.response && error?.response?.data) {
+                Alert.alert('Erro', error?.response?.data?.message || 'Erro desconhecido ao exportar coletas.');
+            } else {
+                Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
+            }
+        }
+    };
+
+    const exportarColetasSemAlerta = async () => {
+        try {
+            const statusInternet = await internetStatus();
+            if (statusInternet) {
+                const coletasRealizadas = await fetchColetasParaExportacao();
+                const coletasDeletadas = await fetchTodasColetasDeletadas();
+
+                const coletaExportacaoRequest = {
+                    "coletaDTO": coletasRealizadas,
+                    "coletaDeletadasDTO": coletasDeletadas
+                };
+
+                await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
+                await deletarTodosItensDeletados();
+
+                await atualizarSituacoesEnvio(coletasRealizadas);
+                
             } else {
                 return;
             }

@@ -1,34 +1,6 @@
 import { getDBConnection } from './database';
 
-export const excluirTodasTabelas = async () => {
-    const tabelas = [
-        "mv_volumes_produto", 
-        "mv_volume",
-        "mv_packinglist_produto",
-        "mv_packinglist",
-        "mv_coleta",
-        "mv_tipo_volume",
-        "mv_usuario",
-        "mv_cliente",
-        "mv_itens_deletar"
-    ];
 
-    const db = await getDBConnection();
-
-    try {
-        await db.execAsync("PRAGMA foreign_keys = OFF");
-
-        for (const tabela of tabelas) {
-            await db.execAsync(`DROP TABLE IF EXISTS ${tabela}`);
-            console.log(`Tabela ${tabela} excluída com sucesso.`);
-        }
-
-        await db.execAsync("PRAGMA foreign_keys = ON");
-
-    } catch (error) {
-        console.error("Erro ao excluir tabelas:", error);
-    }
-};
 
 export const createTable_mv_itens_deletar = async () => {
     const db = await getDBConnection();
@@ -71,7 +43,6 @@ export const createTable_mv_coleta = async () => {
                 idUsuario BIGINT,
                 nomeTelefone VARCHAR NOT NULL,
                 dataHoraColeta TIMESTAMP,
-                dataHoraImportacao TIMESTAMP,
                 statusExportacao TINYINT DEFAULT 0, -- Nova coluna adicionada
                 FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),
                 FOREIGN KEY (idProduto, seq, idPackinglist) REFERENCES mv_packinglist_produto (idProduto, seq, idPackinglist),
