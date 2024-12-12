@@ -35,7 +35,7 @@ export default function TelaDeCarregamento({ navigation }) {
       }, [])
 
     return (
-        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', backgroundColor: '#0EA6E8' }}>
+        <View style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', backgroundColor: '#f5f5f5' }}>
                 <Image source={require('../../../assets/engrenagem.png')}
                     style={{ width: 150, height: 150 }} />
         </View>

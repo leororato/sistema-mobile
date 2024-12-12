@@ -43,7 +43,7 @@ export const createTable_mv_coleta = async () => {
                 idUsuario BIGINT,
                 nomeTelefone VARCHAR NOT NULL,
                 dataHoraColeta TIMESTAMP,
-                statusExportacao TINYINT DEFAULT 0, -- Nova coluna adicionada
+                statusExportacao TINYINT DEFAULT 0,
                 FOREIGN KEY (idPackinglist) REFERENCES mv_packinglist (idPackinglist),
                 FOREIGN KEY (idProduto, seq, idPackinglist) REFERENCES mv_packinglist_produto (idProduto, seq, idPackinglist),
                 FOREIGN KEY (idVolumeProduto, idPackinglist, idProduto, seq, idVolume) REFERENCES mv_volumes_produto (idVolumeProduto, idPackinglist, idProduto, seq, idVolume),

@@ -22,7 +22,6 @@ export const insertColeta = async (data) => {
                 data.dataHoraColeta
             ]
         );
-
     } catch (error) {
         console.error("Erro ao inserir dados:", error);
         Alert.alert("Ocorreu um erro ao inserir dados: ", error.message);

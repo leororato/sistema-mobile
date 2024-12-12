@@ -35,9 +35,9 @@ export default function Login({ navigation }) {
 
   const handleLogin = async () => {
     setContextLoading(true);
-    try {
-      const statusInternet = internetStatus();
-      if (statusInternet) {
+    const statusInternet = internetStatus();
+    if (statusInternet) {
+      try {
         const response = await axios.post('http://192.168.1.238:8080/auth/login', {
           login: login,
           senha: senha,
@@ -54,19 +54,20 @@ export default function Login({ navigation }) {
         await SecureStore.setItemAsync('nome', response.data.nome);
 
         VerificarSeExisteImportada();
-      } else {
-        Alert.alert(
-          'Atenção',
-          'Não há conexão com a internet. Não foi possível fazer login.',
-          [{ text: 'OK', onPress: () => { }, style: 'cancel' }]
-        );
-      }
-    } catch (error) {
-      setContextErrorMessage(error?.response?.data);
-      console.log(error.response)
 
-    } finally {
-      setContextLoading(false);
+      } catch (error) {
+        setContextErrorMessage(error?.response?.data);
+        console.log(error.response)
+
+      } finally {
+        setContextLoading(false);
+      }
+    } else {
+      Alert.alert(
+        'Atenção',
+        'Não há conexão com a internet. Não foi possível fazer login.',
+        [{ text: 'OK', onPress: () => { }, style: 'cancel' }]
+      );
     }
   };
 
@@ -107,7 +108,7 @@ export default function Login({ navigation }) {
         />
 
         {contextErrorMessage && (
-          <View style={{width: '80%', marginTop: -15}}>
+          <View style={{ width: '80%', marginTop: -15 }}>
             <Text style={{ color: 'red' }}>{contextErrorMessage}*</Text>
           </View>
         )}

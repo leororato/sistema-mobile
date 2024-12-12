@@ -53,14 +53,14 @@ export default function Importadas({ navigation }) {
             [
                 {
                     text: 'Sim', onPress: () => Alert.alert(
-                        
+
                         'Verifique as coletas.',
                         'A lista selecionada para exclusão possui coletas que não foram enviadas para o servidor, deseja mesmo exclui-la?',
                         [
                             {
                                 text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
-                            }, 
-                            { text: 'Cancelar', onPress: () => { }, style: 'cancel'},
+                            },
+                            { text: 'Cancelar', onPress: () => { }, style: 'cancel' },
                         ]
                     )
                 },
@@ -88,10 +88,10 @@ export default function Importadas({ navigation }) {
     };
 
     const exportarColetas = async () => {
-        try {
+        const statusInternet = await internetStatus();
+        if (statusInternet) {
+            try {
 
-            const statusInternet = await internetStatus();
-            if (statusInternet) {
                 const coletasRealizadas = await fetchColetasParaExportacao();
                 const coletasDeletadas = await fetchTodasColetasDeletadas();
 
@@ -112,22 +112,23 @@ export default function Importadas({ navigation }) {
                         text: 'Ok', onPress: () => { }
                     }]
                 );
-            } else {
-                Alert.alert(
-                    'Atenção',
-                    'Não há conexão com a internet. Não foi possível enviar as coletas da lista.',
-                    [
-                        { text: 'OK', onPress: () => { }, style: 'cancel' },
-                    ],
-                );
-            }
 
-        } catch (error) {
-            if (error.response && error.response.data) {
-                Alert.alert('Erro', error.response.data.message || 'Erro desconhecido ao exportar coletas.');
-            } else {
-                Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
+
+            } catch (error) {
+                if (error.response && error.response.data) {
+                    Alert.alert('Erro', error.response.data.message || 'Erro desconhecido ao exportar coletas.');
+                } else {
+                    Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
+                }
             }
+        } else {
+            Alert.alert(
+                'Atenção',
+                'Não há conexão com a internet. Não foi possível enviar as coletas da lista.',
+                [
+                    { text: 'OK', onPress: () => { }, style: 'cancel' },
+                ],
+            );
         }
     };
 
@@ -145,8 +146,8 @@ export default function Importadas({ navigation }) {
                         [
                             {
                                 text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
-                            }, 
-                            { text: 'Cancelar', onPress: () => { }, style: 'cancel'},
+                            },
+                            { text: 'Cancelar', onPress: () => { }, style: 'cancel' },
                         ]
                     )
                 },
@@ -200,7 +201,7 @@ export default function Importadas({ navigation }) {
                         >
                             <Text><Icon name="export" size={20} color="#000" />  Salvar</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center',  flexWrap: 'nowrap'}}
+                        <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center', flexWrap: 'nowrap' }}
                             onPress={() => { handleImportarNovamente(item.idPackinglist) }}
                         >
                             <Text><Icon name="download" size={20} color="#000" />  Baixar novamente</Text>
