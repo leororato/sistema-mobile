@@ -73,7 +73,7 @@ export default function Inicio({ navigation }) {
     const importar = async (idPackinglist, tipoDeImportacao) => {
         const statusInternet = internetStatus();
         const nomeTelefone = deviceName;
-        console.log('nomeTel: ', nomeTelefone)
+
         try {
             if (statusInternet) {
                 let response = [];
@@ -338,14 +338,6 @@ const style = StyleSheet.create({
         color: '#333',
         fontSize: 14,
     },
-    gifContainer: {
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 20, // Distância da parte inferior
-    },
-    gif: {
-        width: 100,  // Largura do GIF
-        height: 100, // Altura do GIF
-    },
+  
 });
 

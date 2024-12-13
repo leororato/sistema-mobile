@@ -22,17 +22,6 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (!error.response) {
-      Alert.alert('Erro de Conexão', 'Verifique sua conexão com a internet.');
-    }
-    return Promise.reject(error);
-  }
-);
-
-
-api.interceptors.response.use(
-  (response) => response,
   async (error) => {
     if (error.response && error.response.status === 401) {
       Alert.alert('Sessão Expirada', 'Sua sessão expirou. Por favor, faça login novamente.', [

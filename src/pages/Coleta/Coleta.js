@@ -112,8 +112,6 @@ export default function Coleta({ navigation }) {
                 setItensColetados(response);
             }
 
-            getStatusExportacao();
-
         } catch (error) {
             Alert.alert(
                 "Atenção",
@@ -142,7 +140,6 @@ export default function Coleta({ navigation }) {
 
             const response = await fetchItensColetadosDeUmProduto(idPackinglist, idProduto, seq);
             setItensColetados(response);
-            getStatusExportacao();
 
         } catch (error) {
             Alert.alert(
@@ -172,7 +169,6 @@ export default function Coleta({ navigation }) {
 
             const response = await fetchNaoColetadosPorProduto(idPackinglist, idProduto, seq);
             setItensNaoColetados(response);
-            getStatusExportacao();
 
         } catch (error) {
             Alert.alert(
@@ -203,7 +199,6 @@ export default function Coleta({ navigation }) {
                     setItensNaoColetados(response);
                 }
             }
-            getStatusExportacao();
 
 
         } catch (error) {
@@ -226,7 +221,6 @@ export default function Coleta({ navigation }) {
                 quantidadeColetada: quantidadeColetada,
                 quantidadeTotalDeVolumes: quantidadeTotalDeVolumes
             }
-            getStatusExportacao();
 
             return quantidadesColeta;
 
@@ -257,8 +251,6 @@ export default function Coleta({ navigation }) {
                 setItensNaoColetados(response);
             }
         }
-
-        getStatusExportacao();
 
     }
 
@@ -368,7 +360,7 @@ export default function Coleta({ navigation }) {
                         nomeTelefone: Device.deviceName,
                         dataHoraColeta: dataHoraColeta.toISOString()
                     }
-
+                    console.log('realizada', coleta_realizada)
                     await insertColeta(coleta_realizada);
                     await fetchListaProdutos();
                     await vibracao1();
@@ -509,6 +501,10 @@ export default function Coleta({ navigation }) {
                 await deletarTodosItensDeletados();
 
                 await atualizarSituacoesEnvio(coletasRealizadas);
+
+                await getStatusExportacao();
+
+
                 Alert.alert(
                     "Packinglist enviada com sucesso.",
                     '',
@@ -519,13 +515,19 @@ export default function Coleta({ navigation }) {
 
             } catch (error) {
                 if (error?.response && error?.response?.data) {
-                    Alert.alert('Erro', error?.response?.data?.message || 'Erro desconhecido ao exportar coletas.');
+                    Alert.alert('Erro', error?.response?.data?.message || 'Erro desconhecido ao enviar coletas.');
                 } else {
                     Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
                 }
             }
         } else {
-            return;
+            Alert.alert(
+                "Sem conexão",
+                "Você não possui conexão com a internet. As coletas não foram enviadas.",
+                [{
+                    text: 'Ok', onPress: () => { }, style: 'cancel'
+                }]
+            )
         }
     };
 
@@ -544,18 +546,16 @@ export default function Coleta({ navigation }) {
                 await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
                 await deletarTodosItensDeletados();
 
+
                 await atualizarSituacoesEnvio(coletasRealizadas);
+                getStatusExportacao();
 
             } catch (error) {
-                if (error?.response && error?.response?.data) {
-                    Alert.alert('Erro', error?.response?.data?.message || 'Erro desconhecido ao exportar coletas.');
-                } else {
-                    Alert.alert('Erro', 'Erro de conexão ou servidor inacessível.');
-                }
+                return;
             }
 
         } else {
-            setStatusExportacao(false)
+            setStatusExportacao(false);
             return;
         }
     };
@@ -565,7 +565,7 @@ export default function Coleta({ navigation }) {
         if (scanned) {
             setTimeout(() => {
                 setScanned(false);
-            }, 3000)
+            }, 5000)
         }
     }, [scanned])
 
@@ -700,6 +700,7 @@ export default function Coleta({ navigation }) {
                                 <Icon name="reload" size={20} color="black" style={{ backgroundColor: '#e4ffee', borderRadius: 50 }} />
                             </Animated.View>
                         </TouchableOpacity>
+                        
                     )}
                 </View>
             </View>

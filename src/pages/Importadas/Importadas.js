@@ -124,7 +124,7 @@ export default function Importadas({ navigation }) {
         } else {
             Alert.alert(
                 'Atenção',
-                'Não há conexão com a internet. Não foi possível enviar as coletas da lista.',
+                'Você não possui conexão com a internet. As coletas não foram enviadas.',
                 [
                     { text: 'OK', onPress: () => { }, style: 'cancel' },
                 ],
