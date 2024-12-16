@@ -108,7 +108,8 @@ export default function Inicio({ navigation }) {
                     nomeImportador: packingList.nomeImportador,
                     pesoLiquidoTotal: packingList.pesoLiquidoTotal,
                     pesoBrutoTotal: packingList.pesoBrutoTotal,
-                    numeroColetas: packingList.numeroColetas
+                    numeroColetas: packingList.numeroColetas,
+                    idUsuario: idUsuario
                 };
 
                 await insertPackingList(packingListImportar);

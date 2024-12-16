@@ -38,7 +38,7 @@ export default function Login({ navigation }) {
     const statusInternet = internetStatus();
     if (statusInternet) {
       try {
-        const response = await axios.post('http://192.168.1.238:8080/auth/login', {
+        const response = await axios.post('http://192.168.0.125:8080/auth/login', {
           login: login,
           senha: senha,
         });

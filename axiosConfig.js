@@ -4,7 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Alert } from 'react-native';
 
 const api = axios.create({
-  baseURL: 'http://192.168.1.238:8080/api',
+  baseURL: 'http://192.168.0.125:8080/api',
 });
 
 api.interceptors.request.use(
@@ -20,23 +20,23 @@ api.interceptors.request.use(
   }
 );
 
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response && error.response.status === 401) {
-      Alert.alert('Sessão Expirada', 'Sua sessão expirou. Por favor, faça login novamente.', [
-        {
-          text: 'OK',
-          onPress: async () => {
-            await SecureStore.deleteItemAsync('token');
+// api.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     if (error.response && error.response.status === 401) {
+//       Alert.alert('Sessão Expirada', 'Sua sessão expirou. Por favor, faça login novamente.', [
+//         {
+//           text: 'OK',
+//           onPress: async () => {
+//             await SecureStore.deleteItemAsync('token');
 
-            error.navigateToLogin(error.navigationRef);
-          },
-        },
-      ]);
-    }
-    return Promise.reject(error);
-  }
-);
+//             error.navigateToLogin(error.navigationRef);
+//           },
+//         },
+//       ]);
+//     }
+//     return Promise.reject(error);
+//   }
+// );
 
 export default api;

@@ -194,6 +194,7 @@ export const createTable_mv_packinglist = async () => {
                 pesoLiquidoTotal decimal(10,3) DEFAULT NULL,
                 pesoBrutoTotal decimal(10,3) DEFAULT NULL,
                 numeroColetas bigint DEFAULT '0',
+                idUsuario bigint,
                 PRIMARY KEY (idPackinglist)
             );
         `);

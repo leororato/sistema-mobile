@@ -9,7 +9,7 @@ import { conferirSeJaFoiColetado, deletarColetaPorIdColeta, deletarTodasColetas,
 import { fetchPackingListProdutos } from "../../database/services/packingListProdutoService";
 import { fetchQuantidadeVolumesProdutosDeUmProduto } from "../../database/services/volumeProdutoService";
 import { fetchDescricaoVolume } from "../../database/services/volumeService";
-import { fetchPackingListPorId, fetchPackingLists, fetchPackingListsQuantidade } from "../../database/services/packingListService";
+import { fetchIdUsuarioDaPackinglist, fetchPackingListPorId, fetchPackingLists, fetchPackingListsQuantidade } from "../../database/services/packingListService";
 import * as SecureStore from 'expo-secure-store';
 import { format } from "date-fns";
 import { Platform } from 'react-native';
@@ -67,7 +67,12 @@ export default function Coleta({ navigation }) {
 
     const getId = async () => {
         const id = await SecureStore.getItemAsync('id');
-        setIdUsuario(id);
+        if (id != null) {
+            setIdUsuario(id);
+        } else {
+            const idUser = await fetchIdUsuarioDaPackinglist(idPackinglist);
+            setIdUsuario(idUser);
+        }
     }
 
     const getStatusExportacao = async () => {

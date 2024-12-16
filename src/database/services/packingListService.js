@@ -8,14 +8,15 @@ export const insertPackingList = async (data) => {
         const result = await db.runAsync(
             `INSERT INTO mv_packinglist (
                 idPackinglist, nomeImportador, pesoLiquidoTotal, pesoBrutoTotal,
-                numeroColetas
-            ) VALUES (?, ?, ?, ?, ?)`,
+                numeroColetas, idUsuario
+            ) VALUES (?, ?, ?, ?, ?, ?)`,
             [
                 data.idPackinglist,
                 data.nomeImportador,
                 data.pesoLiquidoTotal,
                 data.pesoBrutoTotal,
-                data.numeroColetas
+                data.numeroColetas,
+                data.idUsuario
             ]
         );
 
@@ -31,6 +32,17 @@ export const fetchPackingLists = async () => {
         const allRows = await db.getAllAsync('SELECT * FROM mv_packinglist');
 
         return allRows;
+    } catch (error) {
+        console.error("Erro ao buscar packing lists:", error);
+        throw error;
+    }
+};
+
+export const fetchIdUsuarioDaPackinglist = async (idPackinglist) => {
+    const db = await getDBConnection();
+    try {
+        const response = await db.getAllAsync('SELECT idUsuario FROM mv_packinglist WHERE idPackinglist = ?', [idPackinglist]);
+        return response;
     } catch (error) {
         console.error("Erro ao buscar packing lists:", error);
         throw error;
