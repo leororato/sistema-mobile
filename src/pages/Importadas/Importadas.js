@@ -7,7 +7,7 @@ import { deletarPackinglistPorId, deletarTodasPackinglistsImportadas, fetchPacki
 import { deletarPackinglistProdutoPorIdPackinglist, deletarTodasPackinglistProdutosImportadas, fetchPackingListProdutos, insertPackingListProduto } from "../../database/services/packingListProdutoService.js";
 import { deletarTodosVolumesProdutosImportados, deletarVolumeProdutoPorIdPackinglist, fetchVolumesProdutos, insertVolumesProdutos } from "../../database/services/volumeProdutoService.js";
 import { deletarTodosVolumesImportados, deletarVolumesPorIdPackinglist, fetchVolumes, insertVolume } from "../../database/services/volumeService.js";
-import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao, insertColeta, updateStatusExportacao } from "../../database/services/coletaService.js";
+import { deletarTodasColetas, fetchColetas, fetchColetasParaExportacao, insertColeta, updateStatusExportacao, verificarStatusExportacao } from "../../database/services/coletaService.js";
 import api from "../../../axiosConfig.js";
 import internetStatus from "../../components/VerificarConexaoComInternet/InternetStatus.js";
 import { deletarTodosItensDeletados, fetchTodasColetasDeletadas } from "../../database/services/itensDeletarService.js";
@@ -45,30 +45,6 @@ export default function Importadas({ navigation }) {
             ]
         );
     };
-
-    const handleImportarNovamente = async (idPackinglist) => {
-        Alert.alert(
-            'Atualizar Lista',
-            `Deseja baixar a lista novamente?`,
-            [
-                {
-                    text: 'Sim', onPress: () => Alert.alert(
-
-                        'Verifique as coletas.',
-                        'A lista selecionada para exclusão possui coletas que não foram enviadas para o servidor, deseja mesmo exclui-la?',
-                        [
-                            {
-                                text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
-                            },
-                            { text: 'Cancelar', onPress: () => { }, style: 'cancel' },
-                        ]
-                    )
-                },
-                { text: 'Não', onPress: () => { }, style: 'cancel' },
-            ],
-            { cancelable: false }
-        );
-    }
 
     const atualizarSituacoesEnvio = async (coletasRealizadas) => {
         const promessas = coletasRealizadas.map((coleta) =>
@@ -135,49 +111,68 @@ export default function Importadas({ navigation }) {
 
     const handleExcluirPlImportada = async (idPackinglist) => {
 
-        Alert.alert(
-            'Excluir Lista',
-            `Tem certeza que deseja excluir a Lista ${idPackinglist}?`,
-            [
-                {
-                    text: 'Sim', onPress: () => Alert.alert(
-                        'A Lista possui coletas pendentes.',
-                        'A lista selecionada para exclusão possui coletas que não foram enviadas para o servidor, deseja mesmo exclui-la?',
-                        [
-                            {
-                                text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
-                            },
-                            { text: 'Cancelar', onPress: () => { }, style: 'cancel' },
-                        ]
-                    )
-                },
-                { text: 'Não', onPress: () => { }, style: 'cancel' },
-            ],
-            { cancelable: false }
-        );
+        const statusExportacao = await verificarStatusExportacao();
+        if (statusExportacao) {
+
+
+            Alert.alert(
+                'Excluir Lista',
+                `Tem certeza que deseja excluir a Lista ${idPackinglist}?`,
+                [
+                    {
+                        text: 'Sim', onPress: () => Alert.alert(
+                            'A Lista possui coletas pendentes.',
+                            'A lista selecionada para exclusão possui coletas que não foram enviadas para o servidor, deseja mesmo exclui-la?',
+                            [
+                                {
+                                    text: 'Sim', onPress: () => deletarItensPackinglist(idPackinglist)
+                                },
+                                { text: 'Cancelar', onPress: () => { }, style: 'cancel' },
+                            ]
+                        )
+                    },
+                    { text: 'Não', onPress: () => { }, style: 'cancel' },
+                ],
+                { cancelable: false }
+            );
+        } else {
+            deletarItensPackinglist(idPackinglist);
+        }
     }
 
     const deletarItensPackinglist = async (idPackinglist) => {
 
-        await deletarVolumesPorIdPackinglist(idPackinglist);
-        await deletarVolumeProdutoPorIdPackinglist(idPackinglist);
-        await deletarPackinglistProdutoPorIdPackinglist(idPackinglist);
-        await deletarPackinglistPorId(idPackinglist);
-        await deletarTodasColetas();
-        await deletarTodosItensDeletados();
+        const statusInternet = await internetStatus();
+        if (statusInternet) {
 
-        console.log('packinglist: ', await fetchPackingLists())
-        console.log('vp: ', await fetchVolumesProdutos())
-        console.log('ppp: ', await fetchPackingListProdutos())
-        console.log('coletas: ', await fetchColetas())
-        console.log('itens deletados: ', await fetchTodasColetasDeletadas())
+            await deletarVolumesPorIdPackinglist(idPackinglist);
+            await deletarVolumeProdutoPorIdPackinglist(idPackinglist);
+            await deletarPackinglistProdutoPorIdPackinglist(idPackinglist);
+            await deletarPackinglistPorId(idPackinglist);
+            await deletarTodasColetas();
+            await deletarTodosItensDeletados();
+
+            console.log('packinglist: ', await fetchPackingLists())
+            console.log('vp: ', await fetchVolumesProdutos())
+            console.log('ppp: ', await fetchPackingListProdutos())
+            console.log('coletas: ', await fetchColetas())
+            console.log('itens deletados: ', await fetchTodasColetasDeletadas())
 
 
-        await buscarPackinglistsImportadas();
+            await buscarPackinglistsImportadas();
 
-        Alert.alert('Packinglist removida.');
+            Alert.alert('Packinglist removida.');
 
-        navigation.replace("Inicio");
+            navigation.replace("Inicio");
+        } else {
+            Alert.alert(
+                'Sem conexão',
+                'Para excluir a packinglist é necessário conectar-se a internet.',
+                [
+                    { text: 'OK', onPress: () => { }, style: 'cancel' },
+                ],
+            );
+        }
     }
 
     const renderPackingListItem = ({ item, index }) => {
@@ -200,11 +195,6 @@ export default function Importadas({ navigation }) {
                             onPress={() => { handleExportarColetas() }}
                         >
                             <Text><Icon name="export" size={20} color="#000" />  Salvar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center', flexWrap: 'nowrap' }}
-                            onPress={() => { handleImportarNovamente(item.idPackinglist) }}
-                        >
-                            <Text><Icon name="download" size={20} color="#000" />  Baixar novamente</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={{ padding: 10, backgroundColor: '#f1c694', borderRadius: 5, display: 'flex', alignItems: 'center' }}
                             onPress={() => { handleExcluirPlImportada(item.idPackinglist) }}

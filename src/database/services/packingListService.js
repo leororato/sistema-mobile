@@ -25,6 +25,17 @@ export const insertPackingList = async (data) => {
     }
 };
 
+export const alterarTabelaPackinglist = async () => {
+    const db = await getDBConnection();
+    try {
+        await db.execAsync(`
+            ALTER TABLE mv_packinglist
+            ADD COLUMN idUsuario BIGINT;
+        `);
+    } catch (error) {
+        console.error("Erro ao alterar tabela mv_coleta:", error);
+    }
+};
 
 export const fetchPackingLists = async () => {
     const db = await getDBConnection();

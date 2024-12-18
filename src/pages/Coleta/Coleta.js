@@ -363,7 +363,8 @@ export default function Coleta({ navigation }) {
                         idVolumeProduto: idVolumeProduto,
                         idUsuario: idUsuario,
                         nomeTelefone: Device.deviceName,
-                        dataHoraColeta: dataHoraColeta.toISOString()
+                        dataHoraColeta: dataHoraColeta.toISOString(),
+                        statusExportacao: 1,
                     }
                     console.log('realizada', coleta_realizada)
                     await insertColeta(coleta_realizada);
@@ -460,7 +461,7 @@ export default function Coleta({ navigation }) {
                 { cancelable: false }
             );
 
-            exportarColetas();
+            exportarColetasSemAlerta();
 
 
         } catch (error) {
@@ -511,7 +512,7 @@ export default function Coleta({ navigation }) {
 
 
                 Alert.alert(
-                    "Packinglist enviada com sucesso.",
+                    "Coletas enviadas com sucesso.",
                     '',
                     [{
                         text: 'Ok', onPress: () => { }

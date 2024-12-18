@@ -63,7 +63,6 @@ export default function Inicio({ navigation }) {
                 message,
                 [
                     { text: 'Cancelar', onPress: () => { }, style: "cancel" },
-                    { text: 'Iniciar nova', onPress: () => resolve('nova') },
                     { text: 'Continuar', onPress: () => resolve('continuar') },
                 ]
             );
@@ -78,7 +77,7 @@ export default function Inicio({ navigation }) {
             if (statusInternet) {
                 let response = [];
 
-                const verificacaoSeExisteColeta = await api.get(`/coletas/verificar-existencia-coleta/${idPackinglist}`)
+                const verificacaoSeExisteColeta = await api.get(`/coletas/verificar-existencia-coleta/${idPackinglist}/${idUsuario}`)
                 
                 if (verificacaoSeExisteColeta.data === true) {
                     const tipoDeImportacaoResposta = await mostrarAlerta(

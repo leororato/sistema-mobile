@@ -8,8 +8,8 @@ export const insertColeta = async (data) => {
 
         const result = await db.runAsync(
             `INSERT INTO mv_coleta (
-            idPackinglist, idProduto, seq, idVolume, idVolumeProduto, idUsuario, nomeTelefone, dataHoraColeta
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+            idPackinglist, idProduto, seq, idVolume, idVolumeProduto, idUsuario, nomeTelefone, dataHoraColeta, statusExportacao
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
             `,
             [
                 data.idPackinglist,
@@ -19,7 +19,8 @@ export const insertColeta = async (data) => {
                 data.idVolumeProduto,
                 data.idUsuario,
                 data.nomeTelefone,
-                data.dataHoraColeta
+                data.dataHoraColeta,
+                data.statusExportacao
             ]
         );
     } catch (error) {
