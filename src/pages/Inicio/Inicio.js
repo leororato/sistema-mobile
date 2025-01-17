@@ -63,6 +63,7 @@ export default function Inicio({ navigation }) {
                 message,
                 [
                     { text: 'Cancelar', onPress: () => { }, style: "cancel" },
+                    { text: 'Iniciar nova', onPress: () => resolve('nova') },
                     { text: 'Continuar', onPress: () => resolve('continuar') },
                 ]
             );
@@ -78,7 +79,7 @@ export default function Inicio({ navigation }) {
                 let response = [];
 
                 const verificacaoSeExisteColeta = await api.get(`/coletas/verificar-existencia-coleta/${idPackinglist}/${idUsuario}`)
-                
+                console.log('idUsuario: ', idUsuario)
                 if (verificacaoSeExisteColeta.data === true) {
                     const tipoDeImportacaoResposta = await mostrarAlerta(
                         "Você deseja iniciar uma nova coleta ou continuar da onde parou?"
@@ -107,8 +108,7 @@ export default function Inicio({ navigation }) {
                     nomeImportador: packingList.nomeImportador,
                     pesoLiquidoTotal: packingList.pesoLiquidoTotal,
                     pesoBrutoTotal: packingList.pesoBrutoTotal,
-                    numeroColetas: packingList.numeroColetas,
-                    idUsuario: idUsuario
+                    numeroColetas: packingList.numeroColetas
                 };
 
                 await insertPackingList(packingListImportar);
@@ -340,4 +340,3 @@ const style = StyleSheet.create({
     },
   
 });
-

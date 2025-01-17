@@ -3,7 +3,7 @@ import axios from "axios"
 const internetStatus = async () => {
 
   try {
-    const response = await axios.get(`http://192.168.0.125:8080/api/teste-conexao/request`, { timeout: 1000 });
+    const response = await axios.get(`http://192.168.1.238:8080/api/teste-conexao/request`, { timeout: 1000 });
     console.log('teste internet: ', response.status)
     return true;
   } catch (error) {

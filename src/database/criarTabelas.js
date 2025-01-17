@@ -1,6 +1,32 @@
 import { getDBConnection } from './database';
 
 
+export const dropAllTables = async () => {
+    const db = await getDBConnection();
+    try {
+        const tables = [
+            'mv_itens_deletar',
+            'mv_coleta',
+            'mv_tipo_volume',
+            'mv_usuario',
+            'mv_cliente',
+            'mv_volumes_produto',
+            'mv_volume',
+            'mv_packinglist_produto',
+            'mv_packinglist'
+        ];
+
+        for (const table of tables) {
+            await db.execAsync(`DROP TABLE IF EXISTS ${table};`);
+            console.log(`Tabela ${table} excluída com sucesso.`);
+        }
+
+        console.log("Todas as tabelas foram excluídas com sucesso.");
+    } catch (error) {
+        console.error("Erro ao excluir as tabelas:", error);
+    }
+};
+
 
 export const createTable_mv_itens_deletar = async () => {
     const db = await getDBConnection();

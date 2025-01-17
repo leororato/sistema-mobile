@@ -94,6 +94,7 @@ export const verificarStatusExportacao = async () => {
         } else {
             statusExportacao = false;
         }
+        console.log('response exportacao: ', resposne)
         return statusExportacao;
     } catch (error) {
         console.error("Erro ao buscar coletas:", error);

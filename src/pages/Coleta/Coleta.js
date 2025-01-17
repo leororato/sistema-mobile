@@ -78,6 +78,7 @@ export default function Coleta({ navigation }) {
     const getStatusExportacao = async () => {
         const response = await verificarStatusExportacao();
         setStatusExportacao(response);
+        console.log('resp: ', response);
     }
 
     // roda a permissao e chama funçao para exibir os produtos que foram importados, aparecendo no topo da tela
@@ -364,7 +365,6 @@ export default function Coleta({ navigation }) {
                         idUsuario: idUsuario,
                         nomeTelefone: Device.deviceName,
                         dataHoraColeta: dataHoraColeta.toISOString(),
-                        statusExportacao: 1,
                     }
                     console.log('realizada', coleta_realizada)
                     await insertColeta(coleta_realizada);
@@ -474,21 +474,27 @@ export default function Coleta({ navigation }) {
         }
     }
 
-    const atualizarSituacoesEnvio = async (coletasRealizadas) => {
-        const promessas = await coletasRealizadas.map((coleta) =>
-            updateStatusExportacao(
-                coleta.idPackinglist,
-                coleta.idProduto,
-                coleta.seq,
-                coleta.idVolume,
-                coleta.idVolumeProduto,
-                coleta.idUsuario,
-                coleta.nomeTelefone,
-                coleta.dataHoraColeta,
-                1
-            )
-        );
-        await Promise.all(promessas);
+    const atualizarSituacoesEnvio = async (coletas) => {
+        if (!coletas || coletas.length === 0) return;
+
+        const db = await getDBConnection();
+
+        try {
+            await db.transaction(async (tx) => {
+                for (const coleta of coletas) {
+                    await tx.executeSql(
+                        `UPDATE mv_coleta 
+                     SET statusExportacao = 1 
+                     WHERE idColeta = ?`,
+                        [coleta.idColeta]
+                    );
+                }
+            });
+
+            console.log("Status de exportação atualizado com sucesso.");
+        } catch (error) {
+            console.error("Erro ao atualizar status de exportação:", error);
+        }
     };
 
     const exportarColetas = async () => {
@@ -551,7 +557,6 @@ export default function Coleta({ navigation }) {
 
                 await api.post("/coletas/exportar-coleta", coletaExportacaoRequest);
                 await deletarTodosItensDeletados();
-
 
                 await atualizarSituacoesEnvio(coletasRealizadas);
                 getStatusExportacao();
@@ -684,7 +689,7 @@ export default function Coleta({ navigation }) {
         <View style={{ flex: 1, backgroundColor: '#e4ffee', }} >
             <View style={{ width: '100%', justifyContent: 'flex-end', alignItems: 'flex-end', padding: 0, position: 'absolute', marginTop: 50 }}>
                 <View style={{ width: 80, height: 80, borderColor: '#000', justifyContent: 'center', alignItems: 'center', }}>
-                    {statusExportacao ? (
+                    {!statusExportacao ? (
                         <View>
                             <Icon name="cloud-check" size={40} color="#30c4c9" />
                         </View>
@@ -706,7 +711,7 @@ export default function Coleta({ navigation }) {
                                 <Icon name="reload" size={20} color="black" style={{ backgroundColor: '#e4ffee', borderRadius: 50 }} />
                             </Animated.View>
                         </TouchableOpacity>
-                        
+
                     )}
                 </View>
             </View>
