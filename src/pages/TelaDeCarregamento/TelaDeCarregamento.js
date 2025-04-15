@@ -10,14 +10,12 @@ export default function TelaDeCarregamento({ navigation }) {
     const VerificarSeExisteImportada = async () => {
         let rota;
         const quantidade = await fetchPackingListsQuantidade();
-        console.log('quantidade: ', quantidade)
         rota = quantidade > 0 ? "Importadas" : "Inicio";
         navigation.replace(rota);
       }
 
     useEffect(() => {
         const verificarExpiracaoDoToken = async () => {
-          console.log('token: ', token)
     
           if (token) {
             const response = await api.post("/usuario/validate-token", { token });

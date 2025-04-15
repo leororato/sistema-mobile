@@ -52,7 +52,7 @@ export default function Inicio({ navigation }) {
             }
 
         } catch (error) {
-            console.log("Erro ao carregar packinglists: ", error);
+            Alert("Erro ao carregar packinglists: ", error);
         }
     };
 
@@ -79,7 +79,6 @@ export default function Inicio({ navigation }) {
                 let response = [];
 
                 const verificacaoSeExisteColeta = await api.get(`/coletas/verificar-existencia-coleta/${idPackinglist}/${idUsuario}`)
-                console.log('idUsuario: ', idUsuario)
                 if (verificacaoSeExisteColeta.data === true) {
                     const tipoDeImportacaoResposta = await mostrarAlerta(
                         "Você deseja iniciar uma nova coleta ou continuar da onde parou?"
@@ -196,7 +195,7 @@ export default function Inicio({ navigation }) {
                 );
             }
         } catch (error) {
-            console.log('Erro ao buscar PackingList: ', error);
+            Alert('Erro ao buscar PackingList: ', error);
         }
     };
 
